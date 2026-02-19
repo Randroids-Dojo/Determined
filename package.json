@@ -1,0 +1,12 @@
+{
+  "name": "determined",
+  "version": "1.0.0",
+  "description": "An absurdist action platformer powered by LLM-generated content",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "@vercel/kv": "^1.0.1"
+  }
+}
