@@ -47,12 +47,15 @@ export function drawHUD(ctx, player, weapon, envItem, deaths, elapsedMs) {
 
   // ── Environment item ──
   const itemX = 380;
-  if (envItem && !envItem.used) {
+  if (envItem && envItem.pickedUp && !envItem.used) {
     ctx.fillStyle = '#44DDFF';
     ctx.fillText(`★ ${envItem.name} [K/X]`, itemX, hpY + 10);
   } else if (envItem?.used) {
     ctx.fillStyle = '#666';
     ctx.fillText(`★ ${envItem.name} (used)`, itemX, hpY + 10);
+  } else if (envItem && !envItem.pickedUp) {
+    ctx.fillStyle = '#666';
+    ctx.fillText(`★ ??? (find it!)`, itemX, hpY + 10);
   }
 
   // ── Deaths ──
