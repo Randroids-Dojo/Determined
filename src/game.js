@@ -18,11 +18,12 @@ import { createObstacle, updateObstacle, damageObstacle, stunObstacle, fireProje
 import { createWeapon, processAttack, updateWeaponProjectiles } from './weapon.js';
 import {
   createEnvironmentItem, activateEnvironmentItem,
-  updateEnvironmentItem, drawEnvironmentEffect,
+  spawnEnvironmentEffect, updateEnvironmentItem,
+  drawEnvironmentAmbient, drawEnvironmentTargeted,
 } from './environment.js';
 import { aabbOverlap } from './physics.js';
 import { drawHUD, drawObstacleHP } from './hud.js';
-import { sfxVictory, resumeAudio } from './audio.js';
+import { sfxVictory, sfxItemPickup, resumeAudio } from './audio.js';
 import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
@@ -109,9 +110,19 @@ const FALLBACK_DATA = {
     screen_shake: 6,
     visual_effect: {
       type: 'flash',
+      style: 'explosion',
       color_primary: '#FFFFFF',
       color_secondary: '#FFD700',
       description: 'A bright shockwave radiates outward',
+    },
+    visual: {
+      base_shape: 'circle', width: 24, height: 24,
+      color_primary: '#FFD700', color_secondary: '#FFFFFF',
+      features: [
+        { type: 'circle', label: 'ring_outer', x: 12, y: 12, radius: 10, color: '#FFD700' },
+        { type: 'circle', label: 'ring_inner', x: 12, y: 12, radius: 6, color: '#FFFFFF' },
+        { type: 'circle', label: 'core', x: 12, y: 12, radius: 3, color: '#FF8800' },
+      ],
     },
   },
 };
@@ -164,7 +175,7 @@ function startGame(data) {
   player = createPlayer();
   obstacle = createObstacle(data.obstacle);
   weapon = createWeapon(data.weapon);
-  envItem = createEnvironmentItem(data.environment_item);
+  envItem = createEnvironmentItem(data.environment_item, words?.environment);
   deaths = 0;
   startTime = Date.now();
   elapsedMs = 0;
@@ -173,11 +184,18 @@ function startGame(data) {
 
 function restartRound() {
   resetPlayer(player);
-  // Reset obstacle to initial state
+  // Reset obstacle to initial state (position, health, AI)
   if (obstacle) {
+    obstacle.x = obstacle.patrolCenter - obstacle.width / 2;
+    obstacle.y = GROUND_Y - obstacle.height;
+    obstacle.vx = 0;
+    obstacle.vy = 0;
     obstacle.hp = obstacle.maxHp;
     obstacle.dead = false;
     obstacle.state = 'patrol';
+    obstacle.patrolDir = -1;
+    obstacle.facingLeft = true;
+    obstacle.attackTimer = 0;
     obstacle.stunTimer = 0;
     obstacle.deathTimer = 0;
     obstacle.projectiles = [];
@@ -190,6 +208,10 @@ function restartRound() {
     envItem.used = false;
     envItem.active = false;
     envItem.timer = 0;
+    envItem.pickedUp = false;
+    envItem.particles = [];
+    envItem.segments = [];
+    envItem.ringRadius = 0;
   }
 }
 
@@ -291,10 +313,26 @@ function update(dt) {
     }
   }
 
-  // Use environment item
-  if (actions.item && envItem && !envItem.used) {
+  // Pick up environment item (player must walk to it)
+  if (envItem && !envItem.pickedUp && !envItem.used) {
+    const itemX = CANVAS_WIDTH * 0.35;
+    const itemHitbox = { x: itemX - 16, y: GROUND_Y - 46, width: 32, height: 46 };
+    if (aabbOverlap(player, itemHitbox)) {
+      envItem.pickedUp = true;
+      sfxItemPickup();
+    }
+  }
+
+  // Use environment item (must be picked up first)
+  if (actions.item && envItem && envItem.pickedUp && !envItem.used) {
     const result = activateEnvironmentItem(envItem);
     if (result) {
+      // Spawn targeted visual effect at the obstacle
+      if (obstacle && !obstacle.dead) {
+        const ox = obstacle.x + obstacle.width / 2;
+        const oy = obstacle.y + obstacle.height / 2;
+        spawnEnvironmentEffect(envItem, ox, oy, CANVAS_WIDTH, CANVAS_HEIGHT);
+      }
       if (result.obstacleDmg > 0) damageObstacle(obstacle, result.obstacleDmg);
       if (result.stunDuration > 0) stunObstacle(obstacle, result.stunDuration);
       if (result.playerDmg > 0) damagePlayer(player, result.playerDmg);
@@ -357,11 +395,11 @@ function render() {
   drawGround(ctx);
   drawFlag(ctx);
 
-  // Environment effect overlay (behind entities)
-  if (envItem) drawEnvironmentEffect(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
+  // Environment ambient overlay (behind entities)
+  if (envItem) drawEnvironmentAmbient(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Environment item pickup cue (floating icon on the ground)
-  if (envItem && !envItem.used && !envItem.active) {
+  // Environment item pickup cue (floating icon on the ground, hidden once picked up)
+  if (envItem && !envItem.pickedUp && !envItem.used && !envItem.active) {
     const itemX = CANVAS_WIDTH * 0.35;
     const bobOffset = Math.sin(Date.now() * 0.004) * 4;
     const itemY = GROUND_Y - 30 + bobOffset;
@@ -372,19 +410,30 @@ function render() {
     ctx.globalAlpha = pulseAlpha;
     ctx.fillStyle = envItem.visualEffect?.color_primary || '#44DDFF';
     ctx.beginPath();
-    ctx.arc(itemX, itemY, 16, 0, Math.PI * 2);
+    ctx.arc(itemX, itemY, 18, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // Star icon
-    ctx.save();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('\u2605', itemX, itemY);
+    // Item visual icon (LLM-generated from keyword)
+    if (envItem.visual) {
+      ctx.save();
+      drawVisual(ctx, envItem.visual, itemX - envItem.visual.width / 2, itemY - envItem.visual.height / 2);
+      ctx.restore();
+    } else {
+      // Fallback: first letter of keyword
+      ctx.save();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((envItem.keyword || '?')[0].toUpperCase(), itemX, itemY);
+      ctx.restore();
+    }
+
     // Label
+    ctx.save();
     ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#44DDFF';
     ctx.fillText(envItem.name, itemX, itemY + 20);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
@@ -431,6 +480,9 @@ function render() {
       }
     }
   }
+
+  // Environment targeted effect (in front of obstacle)
+  if (envItem) drawEnvironmentTargeted(ctx, envItem);
 
   // Weapon projectiles (draw using weapon visual or colored circle)
   if (weapon) {
