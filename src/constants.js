@@ -50,6 +50,23 @@ export const STATE_PLAYING = 'playing';
 export const STATE_VICTORY = 'victory';
 export const STATE_GAME_OVER = 'game_over';
 export const STATE_LEADERBOARD = 'leaderboard';
+export const STATE_LEVEL2_INTRO = 'level2_intro';
+export const STATE_LEVEL2_LOADING = 'level2_loading';
+export const STATE_LEVEL2_PLAYING = 'level2_playing';
+export const STATE_LEVEL2_VICTORY = 'level2_victory';
+
+// ── Level 2 (3D) constants ──
+export const L2_ARENA_RADIUS = 30;
+export const L2_ARENA_WALL_HEIGHT = 4;
+export const L2_PLAYER_SPEED = 0.15;
+export const L2_PLAYER_JUMP_FORCE = 0.28;
+export const L2_GRAVITY = 0.012;
+export const L2_PLAYER_HP = 100;
+export const L2_PLAYER_HEIGHT = 2.0;
+export const L2_PLAYER_RADIUS = 0.3;
+export const L2_CAMERA_DISTANCE = 8;
+export const L2_CAMERA_HEIGHT = 5;
+export const L2_GROUND_FRICTION = 0.85;
 
 // ── Colors ──
 export const COLOR_SKY_TOP = '#4A90D9';

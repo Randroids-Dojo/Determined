@@ -6,10 +6,20 @@
   <title>Determined — Your Words. Your Chaos. Your Problem.</title>
   <meta name="description" content="An absurdist action platformer where your words become your obstacles, weapons, and weather. Powered by AI.">
   <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
 </head>
 <body>
   <div id="game-container">
     <canvas id="game-canvas"></canvas>
+    <canvas id="game-canvas-3d" style="display:none;"></canvas>
+    <canvas id="hud-canvas-3d" style="display:none;"></canvas>
     <div id="ui-overlay"></div>
     <div id="touch-controls" style="display:none;">
       <div class="touch-left">
