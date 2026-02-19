@@ -62,6 +62,10 @@ export function createObstacle(data) {
     showDescription: true, // show flavor text on first encounter
     descriptionTimer: 3000,
 
+    // Death animation
+    deathTimer: 0,
+    deathDuration: 600, // ms
+
     // Projectiles (for ranged attacks)
     projectiles: [],
   };
@@ -71,7 +75,13 @@ export function createObstacle(data) {
  * Update obstacle AI each frame.
  */
 export function updateObstacle(obstacle, player, dt) {
-  if (obstacle.dead) return;
+  // Animate death sequence
+  if (obstacle.dead) {
+    if (obstacle.deathTimer < obstacle.deathDuration) {
+      obstacle.deathTimer += dt;
+    }
+    return;
+  }
 
   // Timers
   if (obstacle.attackTimer > 0) obstacle.attackTimer -= dt;
