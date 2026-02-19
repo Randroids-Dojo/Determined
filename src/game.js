@@ -45,6 +45,7 @@ let deaths = 0;
 let startTime = 0;
 let elapsedMs = 0;
 let lastFrame = 0;
+let resetActive = false; // edge-detect reset so it only fires once per press
 
 // ── Fallback data (used if LLM fails) ──
 const FALLBACK_DATA = {
@@ -167,6 +168,7 @@ function startGame(data) {
   deaths = 0;
   startTime = Date.now();
   elapsedMs = 0;
+  resetActive = false;
 }
 
 function restartRound() {
@@ -252,11 +254,17 @@ function update(dt) {
 
   elapsedMs = Date.now() - startTime;
 
-  // Reset
+  // Reset (edge-triggered: only fires on the first frame of the press)
   if (actions.reset && !player.dead) {
-    deaths++;
-    restartRound();
+    if (!resetActive) {
+      deaths++;
+      restartRound();
+      resetActive = true;
+    }
     return;
+  }
+  if (!actions.reset) {
+    resetActive = false;
   }
 
   // Player died — wait a beat then restart
