@@ -25,6 +25,7 @@ export function createPlayer() {
     animFrame: 0,
     invincibleTimer: 0,  // ms remaining
     attackCooldown: 0,    // ms remaining
+    hitFlashTimer: 0,     // ms remaining for red flash on hit
     itemUsed: false,
     dead: false,
   };
@@ -41,6 +42,7 @@ export function resetPlayer(player) {
   player.animFrame = 0;
   player.invincibleTimer = 0;
   player.attackCooldown = 0;
+  player.hitFlashTimer = 0;
   player.itemUsed = false;
   player.dead = false;
 }
@@ -51,6 +53,7 @@ export function updatePlayer(player, actions, dt) {
   // Timers
   if (player.invincibleTimer > 0) player.invincibleTimer -= dt;
   if (player.attackCooldown > 0) player.attackCooldown -= dt;
+  if (player.hitFlashTimer > 0) player.hitFlashTimer -= dt;
 
   player.animFrame++;
 
@@ -93,11 +96,20 @@ export function updatePlayer(player, actions, dt) {
 /**
  * Deal damage to the player. Returns true if the player died.
  */
-export function damagePlayer(player, amount) {
+export function damagePlayer(player, amount, sourceX) {
   if (player.dead || player.invincibleTimer > 0) return false;
 
   player.hp -= amount;
   player.invincibleTimer = PLAYER_INVINCIBILITY_TIME;
+
+  // Knockback away from damage source
+  const knockDir = (sourceX !== undefined && sourceX > player.x + player.width / 2) ? -1 : 1;
+  player.vx = knockDir * 5;
+  player.vy = -3;
+  player.onGround = false;
+
+  // Hit flash
+  player.hitFlashTimer = 150; // ms
 
   if (player.hp <= 0) {
     player.hp = 0;

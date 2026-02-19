@@ -121,7 +121,8 @@ A stick figure. Simple, charming, intentionally lo-fi.
 
 - **Visual:** Programmatically drawn on Canvas -- circle head, line body, line limbs
 - **Animations:** Simple frame-based: idle (subtle bob), walk (leg alternation), jump (arms up), attack (weapon swing), death (ragdoll collapse), victory (arms raised)
-  - *Implemented:* idle, walk, jump, attack, and victory poses all render. **Death animation (ragdoll collapse) is not yet implemented** — the stick figure freezes in its last pose for 800ms then the round restarts.
+  - *Implemented:* idle, walk, jump, attack, and victory poses all render. **Death ragdoll collapse is not yet implemented** — the stick figure freezes in its last pose. However, a "YOU DIED" overlay with red vignette and incrementing death count now displays during the 800ms death pause before restart.
+  - *Hit feedback (implemented):* On taking damage the player receives directional knockback (pushed away from the damage source) and a 150ms red flash on the stick figure, in addition to the existing invincibility blink.
 - **No customization** in Level 1 (future levels could allow this)
 
 ### 5.3 Player Actions
@@ -145,12 +146,14 @@ Generated from Word 1. The creature:
 - **Attacks** the player if they get close (enters aggro range)
 - **Has health** that must be depleted to defeat it (or player can try to sneak past)
 - **Blocks the path** -- positioned such that the player must deal with it to reach the flag
+- **Death animation (implemented):** On death, the obstacle plays a 600ms fade-out + shrink animation (shrinks to 40% scale while fading to transparent) instead of disappearing instantly
 
 **LLM-Generated Properties:**
 - Name and visual description (used to programmatically compose the sprite)
 - Health points
 - Attack damage
 - Attack pattern (melee swipe, charge, projectile, etc.)
+  - *Note:* `charge` is listed in the schema but currently treated identically to `melee` in `obstacle.js`. No distinct rushing behavior exists yet.
 - Movement speed
 - Aggro range
 - Weakness (ties to potential weapon effectiveness)
@@ -166,6 +169,11 @@ Generated from Word 2. The weapon:
 - **Deals damage** of a specific type (fire, ice, blunt, sharp, electric, etc.)
 - **May have special properties** (knockback, poison, stun, etc.)
 
+**Visual feedback (implemented):**
+- Melee and area attacks display a fading slash arc in the weapon's primary colour during the attack cooldown window
+- Projectile weapons render projectiles using the weapon's `visual` data (scaled to 50%) instead of plain circles
+- The weapon sprite is shown next to the player during the attack pose
+
 **LLM-Generated Properties:**
 - Name and visual description
 - Damage amount
@@ -174,6 +182,7 @@ Generated from Word 2. The weapon:
 - Range
 - Cooldown (seconds between attacks)
 - Special effect (knockback, stun, burn, freeze, etc.)
+  - *Note:* `knockback`, `stun`, and `freeze` are handled by `applySpecialEffect()` in `weapon.js`. `burn` is listed in the schema but currently has no effect handler — it falls through silently.
 - Effectiveness multiplier against the obstacle's weakness
 - Color palette
 
@@ -182,6 +191,7 @@ Generated from Word 2. The weapon:
 Generated from Word 3. This is a **one-time-use item** that:
 
 - Appears in the player's HUD as a usable item
+- **Pickup cue (implemented):** A floating, bobbing star icon with a pulsing glow appears on the play field (at ~35% of canvas width) showing the item name and `[K]` key hint. Disappears once used.
 - When activated, triggers a dramatic environmental event across the entire screen
 - **Affects both the player AND the obstacle** -- strategic timing matters
 - **Resets on death** -- the player gets it back each retry
@@ -414,6 +424,15 @@ The API route validates the LLM response against the schema. If the response is 
 
 Pre-defined fallback defaults ensure the game is always playable even if the LLM fails.
 
+**Deep sanitization (implemented):** After passing top-level structure validation, `sanitizeData()` in `api/generate.js` processes every field before returning the response to the client:
+- All numeric fields are clamped to their schema ranges (e.g. `health` 50–200, `attack_damage` 5–30)
+- Enum fields validated against allowed values (attack patterns, damage types, effect types, base shapes)
+- Hex colour strings validated with regex; invalid values replaced with defaults
+- String fields length-limited (names 60 chars, descriptions 200 chars)
+- `visual.features` arrays capped at 8 items; each feature sanitized per shape type (circle gets `radius`, rectangle gets `width`/`height`, triangle/polygon get validated `points` arrays, etc.)
+
+This runs server-side before caching, so cached results are also sanitized. Client-side clamping in `createObstacle()`, `createWeapon()`, and `createEnvironmentItem()` provides a second layer of defense.
+
 ---
 
 ## 9. Caching System
@@ -600,7 +619,7 @@ Submits a new leaderboard entry.
 
 While the LLM generates content (or cache is retrieved), the player sees a loading screen with randomly chosen flavor text.
 
-### Flavor Text (104 pre-written messages)
+### Flavor Text (102 pre-written messages)
 
 Randomly selected from a pool of 104 messages in `constants.js`. Examples:
 
@@ -702,18 +721,26 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 
 ### Known Issues
 
-- **Leaderboard initials not saved:** Entries are submitted and stored in Vercel KV, but the player's initials are not persisting correctly. Deaths, time, and word combos display on the leaderboard; initials appear blank.
+- **Leaderboard initials not saved:** Entries are submitted and stored in Vercel KV, but the player's initials are not persisting correctly. Deaths, time, and word combos display on the leaderboard; initials appear blank. (The server-side code in `api/leaderboard.js` stores `cleanInitials` correctly in the entry JSON; the issue may be in Vercel KV serialization or the GET retrieval path.)
+
+### Recently Completed (from Remaining Work)
+
+- ~~**Death visual feedback (Section 5.2):**~~ ✅ A "YOU DIED" overlay with red vignette and incrementing death count now displays during the 800ms death pause. (The ragdoll collapse animation itself is still not implemented — see Remaining Work below.)
+- ~~**LLM response validation (Section 8.5):**~~ ✅ `sanitizeData()` in `api/generate.js` now deep-validates all numeric fields (clamped to schema ranges), enum fields, hex colours, string lengths, and `visual.features` shape properties before caching and returning to the client.
+- ~~**Obstacle death animation:**~~ ✅ Obstacle now plays a 600ms fade-out + shrink animation on death.
+- ~~**Player hit feedback:**~~ ✅ Directional knockback and 150ms red flash on the stick figure when taking damage.
+- ~~**Weapon visual feedback:**~~ ✅ Slash arc on melee/area attacks; projectiles now render using the weapon's `visual` data.
+- ~~**Environment item pickup cue:**~~ ✅ Floating star icon with pulsing glow, item name, and `[K]` hint visible on the play field.
 
 ### Remaining Work (within MVP features)
 
 These items are part of features that are otherwise implemented but have gaps compared to what this GDD describes:
 
-- **Death animation (Section 5.2):** The GDD describes a "ragdoll collapse" animation. Currently the stick figure freezes in its last pose for 800ms, then the round restarts with no visual feedback.
+- **Death ragdoll collapse (Section 5.2):** The GDD describes a "ragdoll collapse" animation for the stick figure. The stick figure still freezes in its last pose on death. The "YOU DIED" overlay provides visual feedback, but the stick figure itself has no collapse/ragdoll animation.
 - **Player leaderboard highlight (Section 10.3):** The player's own entry is not highlighted on the leaderboard.
 - **Obstacle "charge" attack pattern (Section 8.4):** Listed as a valid `attack_pattern` in the JSON schema, but `obstacle.js` treats it identically to `melee`. No distinct rushing/charge behavior exists.
 - **Weapon "burn" special effect (Section 8.4):** Listed in the schema but `applySpecialEffect()` in `weapon.js` only handles `stun`, `freeze`, and `knockback`. `burn` falls through with no effect.
 - **Reset animation (Section 5.3):** The GDD originally described "Stick figure explodes" on reset. The current implementation restarts the round instantly with no explosion visual.
-- **LLM response validation (Section 8.5):** `validateData()` in `api/generate.js` only checks that top-level keys (`obstacle`, `weapon`, `environment_item`) exist. Individual field ranges are clamped client-side by `createObstacle()`, `createWeapon()`, and `createEnvironmentItem()`, but malformed sub-fields (e.g., invalid `visual.features` entries, wrong types) could still cause rendering glitches.
 
 ---
 

@@ -14,10 +14,11 @@ The game is built but hasn't been battle-tested in a real environment. These ite
 - Test the full loop: menu → word entry → LLM generation → gameplay → victory → leaderboard
 - Test the fallback path: what happens when `GROQ_API_KEY` is missing or KV is down
 
-### 1b. Input validation hardening
-- The `validateData()` function in `api/generate.js:261` only checks that top-level keys exist — it doesn't validate ranges, types, or visual structure. Malformed LLM output (e.g. `health: "lots"`, missing `visual.features`) could crash the client
-- Add numeric clamping on all LLM-output fields before returning to the client
-- Validate `visual.features` array items have required shape properties
+### 1b. Input validation hardening ✅
+- ~~The `validateData()` function in `api/generate.js` only checks that top-level keys exist — it doesn't validate ranges, types, or visual structure. Malformed LLM output (e.g. `health: "lots"`, missing `visual.features`) could crash the client~~
+- ~~Add numeric clamping on all LLM-output fields before returning to the client~~
+- ~~Validate `visual.features` array items have required shape properties~~
+- **Done:** Added `sanitizeData()` with deep validation of all obstacle, weapon, and environment fields — numeric clamping, enum validation, hex colour checks, string length limits, and per-feature-type shape property sanitization
 
 ### 1c. Cross-browser and mobile testing
 - Test on Safari (Canvas 2D quirks), Firefox, and Chrome
@@ -30,21 +31,26 @@ The game is built but hasn't been battle-tested in a real environment. These ite
 
 These improvements make the existing Level 1 feel more complete without adding new systems.
 
-### 2a. Obstacle death animation
-- Currently obstacles just disappear (`obstacle.dead = true` hides them). Add a brief death sequence: flash, shrink, or fade out, so defeating the creature feels satisfying.
+### 2a. Obstacle death animation ✅
+- ~~Currently obstacles just disappear (`obstacle.dead = true` hides them). Add a brief death sequence: flash, shrink, or fade out, so defeating the creature feels satisfying.~~
+- **Done:** Obstacle now plays a 600ms fade-out + shrink animation on death before disappearing
 
-### 2b. Player feedback on hit
-- The player has an invincibility window after being hit (`PLAYER_INVINCIBILITY_TIME`), but there's no visual flash or knockback. Add a brief blink/flash during invincibility frames so the player knows they got hit.
+### 2b. Player feedback on hit ✅
+- ~~The player has an invincibility window after being hit (`PLAYER_INVINCIBILITY_TIME`), but there's no visual flash or knockback. Add a brief blink/flash during invincibility frames so the player knows they got hit.~~
+- **Done:** Player now receives directional knockback away from the damage source, plus a 150ms red flash on the stick figure. Existing invincibility blink still active.
 
-### 2c. Weapon visual feedback
-- Melee attacks only show the weapon sprite briefly. Consider a small slash arc or impact effect to make attacks feel more impactful.
-- Projectile weapons fire a plain circle — draw them using the weapon's `visual` data instead.
+### 2c. Weapon visual feedback ✅
+- ~~Melee attacks only show the weapon sprite briefly. Consider a small slash arc or impact effect to make attacks feel more impactful.~~
+- ~~Projectile weapons fire a plain circle — draw them using the weapon's `visual` data instead.~~
+- **Done:** Melee/area attacks now show a fading slash arc in the weapon's primary colour. Projectiles render using the weapon's visual data (scaled down) instead of plain circles.
 
-### 2d. Environment item pickup cue
-- The environment item exists in game state but there's no visual indicator on the play field showing where it is or that it's available. Add a floating icon or glow at a fixed location the player can see.
+### 2d. Environment item pickup cue ✅
+- ~~The environment item exists in game state but there's no visual indicator on the play field showing where it is or that it's available. Add a floating icon or glow at a fixed location the player can see.~~
+- **Done:** A floating, bobbing star icon with a pulsing glow appears on the play field showing the item name and [K] hint. Disappears once used.
 
-### 2e. Death/restart screen
-- On death, the game pauses 800ms then silently restarts. Consider a brief "You died" flash or the death counter incrementing visually, so the player understands what happened.
+### 2e. Death/restart screen ✅
+- ~~On death, the game pauses 800ms then silently restarts. Consider a brief "You died" flash or the death counter incrementing visually, so the player understands what happened.~~
+- **Done:** Red vignette overlay fades in on death with "YOU DIED" text and the incrementing death count before auto-restart.
 
 ---
 

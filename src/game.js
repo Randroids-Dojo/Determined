@@ -179,6 +179,7 @@ function restartRound() {
     obstacle.dead = false;
     obstacle.state = 'patrol';
     obstacle.stunTimer = 0;
+    obstacle.deathTimer = 0;
     obstacle.projectiles = [];
     obstacle.showDescription = false;
   }
@@ -300,9 +301,11 @@ function update(dt) {
     }
   }
 
-  // Update obstacle
-  if (obstacle && !obstacle.dead) {
+  // Update obstacle (also runs during death animation)
+  if (obstacle) {
     updateObstacle(obstacle, player, dt);
+  }
+  if (obstacle && !obstacle.dead) {
 
     // Obstacle attacks player (melee / charge)
     if (obstacle.state === 'attack') {
@@ -311,7 +314,7 @@ function update(dt) {
       } else {
         // Melee / charge — damage if close
         if (aabbOverlap(player, obstacle)) {
-          damagePlayer(player, obstacle.attackDamage);
+          damagePlayer(player, obstacle.attackDamage, obstacle.x + obstacle.width / 2);
         }
       }
     }
@@ -319,14 +322,14 @@ function update(dt) {
     // Obstacle projectile hits
     for (const proj of obstacle.projectiles) {
       if (aabbOverlap(proj, player)) {
-        damagePlayer(player, proj.damage);
+        damagePlayer(player, proj.damage, proj.x);
         proj.life = 0; // mark for removal
       }
     }
 
     // Player-obstacle collision damage (walking into it)
     if (aabbOverlap(player, obstacle) && obstacle.state === 'aggro') {
-      damagePlayer(player, Math.ceil(obstacle.attackDamage * 0.3));
+      damagePlayer(player, Math.ceil(obstacle.attackDamage * 0.3), obstacle.x + obstacle.width / 2);
     }
   }
 
@@ -357,33 +360,95 @@ function render() {
   // Environment effect overlay (behind entities)
   if (envItem) drawEnvironmentEffect(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Obstacle
-  if (obstacle && !obstacle.dead) {
+  // Environment item pickup cue (floating icon on the ground)
+  if (envItem && !envItem.used && !envItem.active) {
+    const itemX = CANVAS_WIDTH * 0.35;
+    const bobOffset = Math.sin(Date.now() * 0.004) * 4;
+    const itemY = GROUND_Y - 30 + bobOffset;
+    const pulseAlpha = 0.4 + Math.sin(Date.now() * 0.006) * 0.2;
+
+    // Glow
+    ctx.save();
+    ctx.globalAlpha = pulseAlpha;
+    ctx.fillStyle = envItem.visualEffect?.color_primary || '#44DDFF';
+    ctx.beginPath();
+    ctx.arc(itemX, itemY, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Star icon
+    ctx.save();
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('\u2605', itemX, itemY);
+    // Label
+    ctx.font = '9px monospace';
+    ctx.fillStyle = '#44DDFF';
+    ctx.fillText(envItem.name, itemX, itemY + 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText('[K]', itemX, itemY + 30);
+    ctx.restore();
+  }
+
+  // Obstacle (alive or playing death animation)
+  if (obstacle && (!obstacle.dead || obstacle.deathTimer < obstacle.deathDuration)) {
+    const dying = obstacle.dead && obstacle.deathTimer < obstacle.deathDuration;
+    if (dying) {
+      const progress = obstacle.deathTimer / obstacle.deathDuration;
+      const scale = 1 - progress * 0.6;
+      const alpha = 1 - progress;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      const cx = obstacle.x + obstacle.width / 2;
+      const cy = obstacle.y + obstacle.height / 2;
+      ctx.translate(cx, cy);
+      ctx.scale(scale, scale);
+      ctx.translate(-cx, -cy);
+    }
+
     if (obstacle.visual) {
       drawVisual(ctx, obstacle.visual, obstacle.x, obstacle.y, obstacle.facingLeft);
     } else {
-      // Fallback rectangle
       ctx.fillStyle = '#CC3333';
       ctx.fillRect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
     }
-    drawObstacleHP(ctx, obstacle);
 
-    // Obstacle projectiles
-    ctx.fillStyle = '#FF4444';
-    for (const p of obstacle.projectiles) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-      ctx.fill();
+    if (dying) {
+      ctx.restore();
+    } else {
+      drawObstacleHP(ctx, obstacle);
+    }
+
+    // Obstacle projectiles (only while alive)
+    if (!obstacle.dead) {
+      ctx.fillStyle = '#FF4444';
+      for (const p of obstacle.projectiles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
-  // Weapon projectiles
+  // Weapon projectiles (draw using weapon visual or colored circle)
   if (weapon) {
-    ctx.fillStyle = weapon.visual?.color_primary || '#FFD700';
+    const pColor = weapon.visual?.color_primary || '#FFD700';
     for (const p of weapon.projectiles) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-      ctx.fill();
+      if (weapon.visual) {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        const scale = 0.5;
+        ctx.scale(scale, scale);
+        drawVisual(ctx, weapon.visual, -weapon.visual.width / 2, -weapon.visual.height / 2, p.vx < 0);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = pColor;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 
@@ -392,9 +457,54 @@ function render() {
 
   // Draw weapon near player when attacking
   if (player.state === 'attack' && weapon?.visual) {
+    const dir = player.facing === 'right' ? 1 : -1;
     const wx = player.facing === 'right' ? player.x + player.width + 2 : player.x - weapon.visual.width - 2;
     const wy = player.y + 10;
     drawVisual(ctx, weapon.visual, wx, wy, player.facing === 'left');
+
+    // Slash arc overlay for melee/area attacks
+    if (weapon.attackPattern !== 'projectile') {
+      const arcCx = player.x + player.width / 2 + dir * 20;
+      const arcCy = player.y + player.height / 2;
+      const swingProgress = player.attackCooldown / weapon.cooldown;
+      if (swingProgress > 0.4) {
+        const arcAlpha = (swingProgress - 0.4) / 0.6;
+        ctx.save();
+        ctx.globalAlpha = arcAlpha * 0.6;
+        ctx.strokeStyle = weapon.visual?.color_primary || '#FFD700';
+        ctx.lineWidth = 3;
+        const startAngle = dir > 0 ? -Math.PI * 0.6 : Math.PI * 0.4;
+        const endAngle = dir > 0 ? Math.PI * 0.1 : Math.PI * 1.1;
+        ctx.beginPath();
+        ctx.arc(arcCx, arcCy, weapon.range * 0.5, startAngle, endAngle);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+  }
+
+  // Death overlay
+  if (player.dead) {
+    const deathProgress = Math.min((player._deathTimer || 0) / 800, 1);
+    // Red vignette
+    ctx.save();
+    ctx.fillStyle = `rgba(180, 0, 0, ${0.3 * deathProgress})`;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    // "YOU DIED" text
+    if (deathProgress > 0.15) {
+      const textAlpha = Math.min((deathProgress - 0.15) / 0.3, 1);
+      ctx.globalAlpha = textAlpha;
+      ctx.fillStyle = '#FF2222';
+      ctx.font = 'bold 36px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('YOU DIED', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 10);
+      // Death count
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = '16px monospace';
+      ctx.fillText(`Death #${deaths + 1}`, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 + 24);
+    }
+    ctx.restore();
   }
 
   // HUD
