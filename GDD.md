@@ -133,7 +133,7 @@ A stick figure. Simple, charming, intentionally lo-fi.
 | Move Right | `D` or `→` | `▶` button | Walk right |
 | Jump | `W` or `↑` or `Space` | `▲` button | Jump (gravity-based arc) |
 | Attack | `J` or `Z` | `⚔` button | Use weapon on nearby obstacle |
-| Use Item | `K` or `X` | `★` button | Trigger environment effect (one-time use) |
+| Use Item | `K` or `X` | `★` button | Trigger environment effect (one-time use, must pick up first) |
 | Reset/Retry | `R` | `↺` button | Round restarts instantly, death counter increments |
 
 Touch controls display as on-screen button overlays. In portrait orientation the buttons are fixed at the bottom of the screen with larger tap targets (52px). In landscape they overlay the bottom of the canvas. Touch controls are only rendered on devices with touch support.
@@ -190,11 +190,22 @@ Generated from Word 2. The weapon:
 
 Generated from Word 3. This is a **one-time-use item** that:
 
-- Appears in the player's HUD as a usable item
-- **Pickup cue (implemented):** A floating, bobbing star icon with a pulsing glow appears on the play field (at ~35% of canvas width) showing the item name and `[K]` key hint. Disappears once used.
-- When activated, triggers a dramatic environmental event across the entire screen
+- **Must be picked up first (implemented):** The player must walk to the item's position on the field before it can be used. Pressing K/X does nothing until the item has been collected.
+- **Pickup cue (implemented):** A floating, bobbing icon with a pulsing glow appears on the play field (at ~35% of canvas width) showing the item name and `[K]` key hint. The icon is an **LLM-generated shape visual** based on the environment keyword (e.g., a lightning bolt shape for "Lightning", a flame shape for "Fire") — rendered with `drawVisual()` just like creature and weapon sprites. Falls back to the first letter of the keyword if no visual is available. Disappears once picked up.
+- **HUD states (implemented):** Before pickup the HUD shows `⚡ [Keyword] (find it!)` in gray. After pickup it shows `⚡ [Item Name] [K/X]` in blue. After use it shows `⚡ [Item Name] (used)` in gray.
+- **Pickup sound (implemented):** A short ascending two-tone triangle wave plays when the player walks over the item.
+- When activated, triggers a **keyword-matched targeted effect** aimed at the obstacle's position
+- **Targeted effect system (implemented):** Instead of a generic full-screen flash, effects are now matched to the environment keyword using a `style` field. Seven styles are supported:
+  - `bolt` — Lightning zigzag from sky to obstacle with flickering segments + spark particles at impact
+  - `flames` — Fire particles rising from under the obstacle, continuously respawning during the effect
+  - `freeze` — Diamond-shaped ice crystal particles radiating outward + expanding frost ring
+  - `wind` — Debris particles spiraling around the obstacle
+  - `explosion` — Expanding shockwave ring + debris particles with gravity (default/fallback)
+  - `beam` — Vertical glowing column of light from sky to obstacle
+  - `rain` — Dense falling streak particles across the screen, continuously respawning
+- The ambient overlay (flash/weather/particles/overlay) still plays as a subtle background tint behind the targeted effect
 - **Affects both the player AND the obstacle** -- strategic timing matters
-- **Resets on death** -- the player gets it back each retry
+- **Resets on death** -- the player gets the item back each retry (must pick it up again)
 - Can be the key to victory or cause the player's own demise (absurdist chaos)
 
 **LLM-Generated Properties:**
@@ -205,15 +216,15 @@ Generated from Word 3. This is a **one-time-use item** that:
 - Duration (seconds, 0 for instant)
 - Affects player: true/false + how
 - Affects obstacle: true/false + how
-- Visual effect description (used for canvas animation)
+- Visual effect: ambient overlay type + targeted animation style + color palette
+- Pickup icon visual (small 20-30px shape-based icon composed from 2-5 features)
 - Screen shake intensity (0-10)
-- Color palette
 
-**Examples:**
-- "Lightning" → A bolt strikes a random position -- could hit the creature or the player
-- "Earthquake" → Screen shakes, both player and creature stumble, rocks fall
-- "Blizzard" → Screen goes white, movement slowed for everyone, ice damage over time
-- "Flood" → Water rises from the bottom temporarily, both must jump or take damage
+**Examples of targeted effects in action:**
+- "Lightning" → A jagged bolt shoots from the sky to the creature, sparks fly at impact
+- "Earthquake" → Expanding shockwave ring + debris fly outward from the creature
+- "Blizzard" → Ice crystals radiate outward from the creature, frost ring expands
+- "Tornado" → Debris spirals around the creature in a vortex
 
 ---
 
@@ -234,7 +245,7 @@ Based on research from the GoDig project (which found AI image generation unreli
 - **Player:** Stick figure (black lines, circle head, simple limbs)
 - **Obstacles:** Composed from primitive shapes based on LLM description (e.g., a "lion" might be an orange circle body, smaller circle head, triangle ears, line tail, dot eyes)
 - **Weapons:** Simple iconic shapes (sword = line + rectangle, gun = L-shape, etc.)
-- **Environment Effects:** Full-screen overlays, particle effects, screen shake
+- **Environment Effects:** Keyword-matched targeted particle animations (bolt, flames, freeze, wind, explosion, beam, rain) layered over subtle full-screen ambient overlays, plus screen shake
 - **Background:** Simple gradient sky, flat ground plane, flag at the end
 - **Color:** LLM specifies color palettes per entity; the game renders with those colors
 - **UI:** Clean, minimal, retro-pixel-font aesthetic
@@ -281,6 +292,7 @@ Simple retro beeps and boops. All sounds are generated programmatically using th
 | Hit (deal damage) | Satisfying impact blip |
 | Hit (take damage) | Low descending tone |
 | Death | Sad descending scale + small explosion |
+| Item Pickup | Short ascending two-tone (triangle wave) |
 | Item Use | Dramatic rising tone |
 | Victory (reach flag) | Ascending fanfare jingle (4-5 notes) |
 | Menu Select | Click blip |
@@ -407,9 +419,24 @@ The LLM is asked to return the following structure:
     "screen_shake": "number - intensity 0 to 10",
     "visual_effect": {
       "type": "overlay | particles | flash | weather",
+      "style": "bolt | flames | freeze | wind | explosion | beam | rain",
       "color_primary": "string - hex color",
       "color_secondary": "string - hex color",
       "description": "string - what it looks like"
+    },
+    "visual": {
+      "base_shape": "circle | rectangle | triangle",
+      "width": "number - 20 to 30",
+      "height": "number - 20 to 30",
+      "color_primary": "string - hex color",
+      "color_secondary": "string - hex color",
+      "features": [
+        {
+          "type": "circle | rectangle | triangle | line | arc | polygon",
+          "label": "string",
+          "...shape-specific properties"
+        }
+      ]
     }
   }
 }
@@ -429,7 +456,9 @@ Pre-defined fallback defaults ensure the game is always playable even if the LLM
 - Enum fields validated against allowed values (attack patterns, damage types, effect types, base shapes)
 - Hex colour strings validated with regex; invalid values replaced with defaults
 - String fields length-limited (names 60 chars, descriptions 200 chars)
-- `visual.features` arrays capped at 8 items; each feature sanitized per shape type (circle gets `radius`, rectangle gets `width`/`height`, triangle/polygon get validated `points` arrays, etc.)
+- `visual.features` arrays capped at 8 items for creatures/weapons, 5 for environment item icons; each feature sanitized per shape type (circle gets `radius`, rectangle gets `width`/`height`, triangle/polygon get validated `points` arrays, etc.)
+- Environment item `visual_effect.style` validated against 7 allowed styles (`bolt`, `flames`, `freeze`, `wind`, `explosion`, `beam`, `rain`); defaults to `explosion`
+- Environment item `visual` (pickup icon) dimensions clamped to 16-40px, colours validated, features capped at 5
 
 This runs server-side before caching, so cached results are also sanitized. Client-side clamping in `createObstacle()`, `createWeapon()`, and `createEnvironmentItem()` provides a second layer of defense.
 
@@ -711,7 +740,7 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 
 ### Nice to Have (Post-MVP)
 - [ ] More nuanced sprite composition (animations on generated entities)
-- [ ] Particle effects system
+- [x] Particle effects system — implemented for environment item activation (7 keyword-matched styles: bolt, flames, freeze, wind, explosion, beam, rain)
 - [ ] More weapon attack patterns
 - [ ] Sound effects that vary based on damage type
 - [ ] Share results (screenshot / link)
@@ -721,7 +750,7 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 
 ### Known Issues
 
-- **Leaderboard initials not saved:** Entries are submitted and stored in Vercel KV, but the player's initials are not persisting correctly. Deaths, time, and word combos display on the leaderboard; initials appear blank. (The server-side code in `api/leaderboard.js` stores `cleanInitials` correctly in the entry JSON; the issue may be in Vercel KV serialization or the GET retrieval path.)
+No critical issues at this time. (Previously: leaderboard initials not saving — now fixed.)
 
 ### Recently Completed (from Remaining Work)
 
@@ -730,7 +759,11 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 - ~~**Obstacle death animation:**~~ ✅ Obstacle now plays a 600ms fade-out + shrink animation on death.
 - ~~**Player hit feedback:**~~ ✅ Directional knockback and 150ms red flash on the stick figure when taking damage.
 - ~~**Weapon visual feedback:**~~ ✅ Slash arc on melee/area attacks; projectiles now render using the weapon's `visual` data.
-- ~~**Environment item pickup cue:**~~ ✅ Floating star icon with pulsing glow, item name, and `[K]` hint visible on the play field.
+- ~~**Environment item pickup cue:**~~ ✅ Floating icon with pulsing glow, item name, and `[K]` hint visible on the play field. Icon is now an LLM-generated shape visual based on the environment keyword (not a generic star).
+- ~~**Item pickup mechanic:**~~ ✅ Player must walk to the item to collect it before it can be used. Pickup plays a sound effect. HUD shows three states: not collected / ready to use / used.
+- ~~**Keyword-matched environment effects:**~~ ✅ Environment item activation now plays a targeted particle animation matched to the keyword (bolt, flames, freeze, wind, explosion, beam, rain) aimed at the obstacle's position, instead of a generic full-screen flash.
+- ~~**Particle effects system (Post-MVP):**~~ ✅ Implemented for environment item effects with spawning, physics updates (gravity, spiral motion, flickering), continuous respawning for flames/rain, and per-style rendering (zigzag bolts, diamond ice crystals, streak rain, expanding rings).
+- ~~**Leaderboard initials bug:**~~ ✅ Initials now persist and display correctly on the leaderboard.
 
 ### Remaining Work (within MVP features)
 

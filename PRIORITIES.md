@@ -46,7 +46,12 @@ These improvements make the existing Level 1 feel more complete without adding n
 
 ### 2d. Environment item pickup cue ✅
 - ~~The environment item exists in game state but there's no visual indicator on the play field showing where it is or that it's available. Add a floating icon or glow at a fixed location the player can see.~~
-- **Done:** A floating, bobbing star icon with a pulsing glow appears on the play field showing the item name and [K] hint. Disappears once used.
+- **Done:** A floating, bobbing icon with a pulsing glow appears on the play field showing the item name and [K] hint.
+- **Extended:** Icon is now an LLM-generated shape visual based on the environment keyword (not a generic star). Player must walk to the icon to pick it up before it can be used (pickup sound plays, HUD updates). Disappears once collected.
+
+### 2f. Keyword-matched environment effects ✅
+- ~~Environment item activation was always a generic screen flash/overlay regardless of the keyword.~~
+- **Done:** Effects now target the obstacle's position with keyword-matched animations: bolt (lightning zigzag), flames (rising fire particles), freeze (ice crystals + frost ring), wind (spiraling debris), explosion (shockwave ring + debris), beam (vertical light column), rain (falling streaks). The LLM picks the style via `visual_effect.style`. Ambient overlay still plays as subtle background tint.
 
 ### 2e. Death/restart screen ✅
 - ~~On death, the game pauses 800ms then silently restarts. Consider a brief "You died" flash or the death counter incrementing visually, so the player understands what happened.~~
@@ -115,7 +120,7 @@ Per the GDD, Level 2 introduces multiple obstacles and a new word category ("Sid
 Lower urgency but noted for completeness:
 
 - **Animated sprite composition** — Idle/walk/attack animations for generated creatures and weapons
-- **Particle effects system** — Dust on landing, sparks on hit, elemental effects
+- **Particle effects system** — ✅ Implemented for environment item effects (7 styles with spawning, physics, respawning). Remaining: dust on landing, sparks on hit
 - **Dynamic sound effects** — Vary pitch/tone based on damage type and weapon
 - **PWA support** — Service worker for offline play with cached content
 - **Achievement system** — Track memorable combos ("Defeat a Dragon with a Banana")
