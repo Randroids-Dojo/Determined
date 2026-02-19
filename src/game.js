@@ -18,7 +18,7 @@ import { createObstacle, updateObstacle, damageObstacle, stunObstacle, fireProje
 import { createWeapon, processAttack, updateWeaponProjectiles } from './weapon.js';
 import {
   createEnvironmentItem, activateEnvironmentItem,
-  updateEnvironmentItem, drawEnvironmentEffect,
+  spawnEnvironmentEffect, updateEnvironmentItem, drawEnvironmentEffect,
 } from './environment.js';
 import { aabbOverlap } from './physics.js';
 import { drawHUD, drawObstacleHP } from './hud.js';
@@ -109,6 +109,7 @@ const FALLBACK_DATA = {
     screen_shake: 6,
     visual_effect: {
       type: 'flash',
+      style: 'explosion',
       color_primary: '#FFFFFF',
       color_secondary: '#FFD700',
       description: 'A bright shockwave radiates outward',
@@ -200,6 +201,9 @@ function restartRound() {
     envItem.active = false;
     envItem.timer = 0;
     envItem.pickedUp = false;
+    envItem.particles = [];
+    envItem.segments = [];
+    envItem.ringRadius = 0;
   }
 }
 
@@ -315,6 +319,12 @@ function update(dt) {
   if (actions.item && envItem && envItem.pickedUp && !envItem.used) {
     const result = activateEnvironmentItem(envItem);
     if (result) {
+      // Spawn targeted visual effect at the obstacle
+      if (obstacle && !obstacle.dead) {
+        const ox = obstacle.x + obstacle.width / 2;
+        const oy = obstacle.y + obstacle.height / 2;
+        spawnEnvironmentEffect(envItem, ox, oy, CANVAS_WIDTH, CANVAS_HEIGHT);
+      }
       if (result.obstacleDmg > 0) damageObstacle(obstacle, result.obstacleDmg);
       if (result.stunDuration > 0) stunObstacle(obstacle, result.stunDuration);
       if (result.playerDmg > 0) damagePlayer(player, result.playerDmg);
