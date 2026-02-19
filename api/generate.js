@@ -24,6 +24,17 @@ const RATE_WINDOW_SEC = 3600; // 1 hour
 
 // ── JSON schema for the LLM prompt ──
 
+const FEATURE_SHAPE_DOCS = `
+Feature shape types and their required properties:
+  - circle:    { "type":"circle",    "label":"string", "x":number, "y":number, "radius":number, "color":"hex" }
+  - rectangle: { "type":"rectangle", "label":"string", "x":number, "y":number, "width":number, "height":number, "color":"hex" }
+  - triangle:  { "type":"triangle",  "label":"string", "points":[[x1,y1],[x2,y2],[x3,y3]], "color":"hex" }
+  - line:      { "type":"line",      "label":"string", "x1":number, "y1":number, "x2":number, "y2":number, "lineWidth":1-10, "color":"hex" }
+  - arc:       { "type":"arc",       "label":"string", "x":number, "y":number, "radius":number, "startAngle":radians, "endAngle":radians, "color":"hex" }
+  - polygon:   { "type":"polygon",   "label":"string", "points":[[x1,y1],[x2,y2],...], "color":"hex" }
+
+All x/y positions are RELATIVE to the entity's top-left corner (0,0). The base_shape fills from (0,0) to (width,height).`;
+
 const JSON_SCHEMA = `{
   "obstacle": {
     "name": "string",
@@ -39,10 +50,10 @@ const JSON_SCHEMA = `{
       "base_shape": "circle | rectangle | triangle",
       "width": "number 30-80",
       "height": "number 30-80",
-      "color_primary": "hex color",
+      "color_primary": "hex color - body color",
       "color_secondary": "hex color",
       "color_accent": "hex color",
-      "features": [ { "type": "circle|rectangle|triangle|line|arc", "label": "string", ...shape props } ]
+      "features": "array of 4-8 shape objects (see feature shape docs)"
     }
   },
   "weapon": {
@@ -62,7 +73,7 @@ const JSON_SCHEMA = `{
       "height": "number",
       "color_primary": "hex color",
       "color_secondary": "hex color",
-      "features": [ { "type": "circle|rectangle|triangle|line|arc", "label": "string", ...shape props } ]
+      "features": "array of shape objects (see feature shape docs)"
     }
   },
   "environment_item": {
@@ -84,6 +95,24 @@ const JSON_SCHEMA = `{
   }
 }`;
 
+const VISUAL_EXAMPLE = `
+Example: if the creature is "lion", a good visual would be:
+{
+  "base_shape": "rectangle", "width": 70, "height": 50,
+  "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
+  "features": [
+    { "type": "circle", "label": "mane", "x": 20, "y": 5, "radius": 25, "color": "#B87A10" },
+    { "type": "circle", "label": "head", "x": 20, "y": 8, "radius": 16, "color": "#D4A030" },
+    { "type": "circle", "label": "eye_left", "x": 13, "y": 5, "radius": 3, "color": "#FFFFFF" },
+    { "type": "circle", "label": "eye_right", "x": 27, "y": 5, "radius": 3, "color": "#FFFFFF" },
+    { "type": "circle", "label": "pupil_left", "x": 14, "y": 5, "radius": 1.5, "color": "#1A1000" },
+    { "type": "circle", "label": "pupil_right", "x": 28, "y": 5, "radius": 1.5, "color": "#1A1000" },
+    { "type": "triangle", "label": "ear_left", "points": [[6,-4],[2,-14],[12,-10]], "color": "#B87A10" },
+    { "type": "triangle", "label": "ear_right", "points": [[34,-4],[38,-14],[28,-10]], "color": "#B87A10" }
+  ]
+}
+Notice: features define recognizable body parts (mane, head, eyes, ears) positioned relative to the base shape.`;
+
 function buildPrompt(words) {
   return `You are a creative game designer for an absurdist action game called "Determined".
 Given these three player-chosen words, generate game content as structured JSON.
@@ -95,11 +124,17 @@ ENVIRONMENT EFFECT: ${words.environment}
 Generate a JSON response matching this exact structure:
 ${JSON_SCHEMA}
 
+${FEATURE_SHAPE_DOCS}
+
+${VISUAL_EXAMPLE}
+
 Rules:
+- The creature's visual MUST be recognizable as a "${words.creature}". Use features to build distinctive body parts (head, eyes, ears, limbs, tail, horns, wings, etc.) that look like the named creature. Choose colors appropriate to the creature.
 - Make it fun, absurd, and creative. Lean into humor.
 - The creature's weakness should relate to the weapon's damage type when it makes sense.
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
-- Visual features use canvas primitives. Keep features to 3-8 items per entity.
+- Use 4-8 features per creature to build a recognizable shape. Each feature should represent a distinct body part with a descriptive label.
+- Position features relative to the base shape (0,0 is top-left, width/height is bottom-right).
 - All numbers must be within the specified ranges.
 - Color values must be valid hex colors (e.g. "#FF0000").
 - Return ONLY valid JSON, no markdown or explanation.`;
@@ -241,7 +276,7 @@ async function callGroq(words) {
         { role: 'user', content: buildPrompt(words) },
       ],
       response_format: { type: 'json_object' },
-      temperature: 0.9,
+      temperature: 0.7,
       max_tokens: 2000,
     }),
   });
