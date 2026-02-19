@@ -1,6 +1,7 @@
 /**
  * Input handler — keyboard + touch controls.
  * Tracks which actions are currently active each frame.
+ * Supports both 2D (Level 1) and 3D (Level 2) control schemes.
  */
 
 const keys = {};
@@ -8,6 +9,8 @@ const actions = {
   left: false,
   right: false,
   jump: false,
+  forward: false,   // Level 2: move forward (into arena)
+  backward: false,   // Level 2: move backward
   attack: false,
   item: false,
   reset: false,
@@ -31,6 +34,8 @@ function updateActionsFromKeys() {
   actions.left = !!(keys['ArrowLeft'] || keys['KeyA']);
   actions.right = !!(keys['ArrowRight'] || keys['KeyD']);
   actions.jump = !!(keys['ArrowUp'] || keys['KeyW'] || keys['Space']);
+  actions.forward = !!(keys['ArrowUp'] || keys['KeyW']);
+  actions.backward = !!(keys['ArrowDown'] || keys['KeyS']);
   actions.attack = !!(keys['KeyJ'] || keys['KeyZ']);
   actions.item = !!(keys['KeyK'] || keys['KeyX']);
   actions.reset = !!keys['KeyR'];
@@ -68,7 +73,7 @@ function createTouchControls() {
 function updateActionsFromTouch() {
   if (touchBtns.left) actions.left = true;
   if (touchBtns.right) actions.right = true;
-  if (touchBtns.jump) actions.jump = true;
+  if (touchBtns.jump) { actions.jump = true; actions.forward = true; }
   if (touchBtns.attack) actions.attack = true;
   if (touchBtns.item) actions.item = true;
   if (touchBtns.reset) actions.reset = true;
@@ -87,6 +92,8 @@ export function pollInput() {
   actions.left = false;
   actions.right = false;
   actions.jump = false;
+  actions.forward = false;
+  actions.backward = false;
   actions.attack = false;
   actions.item = false;
   actions.reset = false;

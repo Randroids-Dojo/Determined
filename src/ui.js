@@ -1,6 +1,7 @@
 /**
  * UI — menu screens, word entry, loading screen, victory, leaderboard display.
  * All rendered on the main canvas or as HTML overlays.
+ * Includes Level 2 transition screens.
  */
 
 import {
@@ -195,7 +196,7 @@ export function showVictoryScreen(deaths, elapsedMs, words, onSubmitScore, onPla
 
 // ── Leaderboard ──
 
-export function showLeaderboard(entries, onBack) {
+export function showLeaderboard(entries, onBack, onContinueToLevel2) {
   clearOverlay();
   showOverlay();
   let rows = '';
@@ -216,6 +217,10 @@ export function showLeaderboard(entries, onBack) {
     rows = '<tr><td colspan="5">No entries yet. Be the first!</td></tr>';
   }
 
+  const continueBtn = onContinueToLevel2
+    ? '<button id="btn-lb-continue" class="btn btn-level2">CONTINUE TO LEVEL 2</button>'
+    : '';
+
   overlayEl.innerHTML = `
     <div class="leaderboard-screen">
       <h2>LEADERBOARD</h2>
@@ -227,10 +232,125 @@ export function showLeaderboard(entries, onBack) {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <button id="btn-lb-back" class="btn btn-secondary">BACK</button>
+      <div class="leaderboard-buttons">
+        ${continueBtn}
+        <button id="btn-lb-back" class="btn btn-secondary">BACK</button>
+      </div>
     </div>
   `;
+
+  if (onContinueToLevel2) {
+    document.getElementById('btn-lb-continue').addEventListener('click', () => {
+      sfxMenuSelect();
+      onContinueToLevel2();
+    });
+  }
   document.getElementById('btn-lb-back').addEventListener('click', () => {
+    sfxMenuSelect();
+    onBack();
+  });
+}
+
+// ── Level 2 Intro Screen ──
+
+export function showLevel2Intro(words, onStart) {
+  clearOverlay();
+  showOverlay();
+  overlayEl.innerHTML = `
+    <div class="level2-intro-screen">
+      <div class="level2-badge">LEVEL 2</div>
+      <h2>ENTERING THE ARENA</h2>
+      <p class="level2-subtitle">The battle continues... in three dimensions.</p>
+      <div class="level2-info">
+        <p>Your ${escapeHtml(words?.creature || 'creature')} has evolved.</p>
+        <p>Your ${escapeHtml(words?.weapon || 'weapon')} feels different here.</p>
+        <p>The ${escapeHtml(words?.environment || 'environment')} surrounds the arena.</p>
+      </div>
+      <div class="level2-controls-info">
+        <p class="controls-header">3D ARENA CONTROLS</p>
+        <div class="controls-grid">
+          <span class="key">A/D</span> <span>Strafe left/right</span>
+          <span class="key">W/SPACE</span> <span>Jump</span>
+          <span class="key">J/Z</span> <span>Attack</span>
+          <span class="key">K/X</span> <span>Use item</span>
+          <span class="key">R</span> <span>Reset</span>
+        </div>
+      </div>
+      <p class="level2-objective">Defeat the creature to win.</p>
+      <button id="btn-start-level2" class="btn btn-level2">ENTER THE ARENA</button>
+    </div>
+  `;
+  document.getElementById('btn-start-level2').addEventListener('click', () => {
+    sfxMenuSelect();
+    onStart();
+  });
+}
+
+// ── Level 2 Loading Screen ──
+
+export function showLevel2Loading() {
+  clearOverlay();
+  showOverlay();
+  const flavors = [
+    'Constructing the third dimension...',
+    'Extruding reality from a flat plane...',
+    'Adding depth to your problems. Literally.',
+    'Polygons are being recruited...',
+    'The arena is assembling itself in 3D space...',
+    'Your stick figure is learning perspective...',
+    'Upgrading chaos to volumetric chaos...',
+    'Adding shadows and regret...',
+    'Rendering the unrenderable...',
+    'The creature is practicing its 3D entrance...',
+    'Inflating 2D pixels into 3D voxels of pain...',
+    'Three dimensions of hurt, loading...',
+    'The Z-axis was a mistake. Proceeding anyway.',
+    'Adding an extra dimension of suffering...',
+    'Depth buffer filling with dread...',
+  ];
+  const flavor = flavors[Math.floor(Math.random() * flavors.length)];
+  overlayEl.innerHTML = `
+    <div class="loading-screen level2-loading">
+      <div class="loading-spinner level2-spinner"></div>
+      <p class="level2-loading-badge">LEVEL 2</p>
+      <p class="loading-text">${flavor}</p>
+    </div>
+  `;
+}
+
+// ── Level 2 Victory Screen ──
+
+export function showLevel2Victory(totalDeaths, totalTimeMs, words, onBack) {
+  clearOverlay();
+  showOverlay();
+  const secs = Math.floor(totalTimeMs / 1000);
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+
+  overlayEl.innerHTML = `
+    <div class="level2-victory-screen">
+      <div class="level2-badge victory-badge">COMPLETE</div>
+      <h2>YOU ARE TRULY DETERMINED</h2>
+      <p class="victory-subtitle">Both levels conquered. Both dimensions defeated.</p>
+      <div class="final-stats">
+        <div class="stat-row">
+          <span class="stat-label">Total Deaths</span>
+          <span class="stat-value">${totalDeaths}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Time</span>
+          <span class="stat-value">${mins}:${String(s).padStart(2, '0')}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Words</span>
+          <span class="stat-value">${escapeHtml(words?.creature)} / ${escapeHtml(words?.weapon)} / ${escapeHtml(words?.environment)}</span>
+        </div>
+      </div>
+      <p class="victory-flavor">"Your words shaped reality. Reality fought back. You won anyway."</p>
+      <button id="btn-final-back" class="btn btn-primary">BACK TO MENU</button>
+    </div>
+  `;
+  document.getElementById('btn-final-back').addEventListener('click', () => {
     sfxMenuSelect();
     onBack();
   });
