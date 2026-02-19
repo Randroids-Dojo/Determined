@@ -121,18 +121,21 @@ A stick figure. Simple, charming, intentionally lo-fi.
 
 - **Visual:** Programmatically drawn on Canvas -- circle head, line body, line limbs
 - **Animations:** Simple frame-based: idle (subtle bob), walk (leg alternation), jump (arms up), attack (weapon swing), death (ragdoll collapse), victory (arms raised)
+  - *Implemented:* idle, walk, jump, attack, and victory poses all render. **Death animation (ragdoll collapse) is not yet implemented** — the stick figure freezes in its last pose for 800ms then the round restarts.
 - **No customization** in Level 1 (future levels could allow this)
 
 ### 5.3 Player Actions
 
 | Action | Keyboard | Touch/Mobile | Description |
 |--------|----------|-------------|-------------|
-| Move Left | `A` or `←` | Left side of screen | Walk left |
-| Move Right | `D` or `→` | Right side of screen | Walk right |
-| Jump | `W` or `↑` or `Space` | Swipe up | Jump (gravity-based arc) |
-| Attack | `J` or `Z` | Tap attack button | Use weapon on nearby obstacle |
-| Use Item | `K` or `X` | Tap item button | Trigger environment effect (one-time use) |
-| Reset/Retry | `R` | Tap retry button | Stick figure explodes, round restarts instantly |
+| Move Left | `A` or `←` | `◀` button | Walk left |
+| Move Right | `D` or `→` | `▶` button | Walk right |
+| Jump | `W` or `↑` or `Space` | `▲` button | Jump (gravity-based arc) |
+| Attack | `J` or `Z` | `⚔` button | Use weapon on nearby obstacle |
+| Use Item | `K` or `X` | `★` button | Trigger environment effect (one-time use) |
+| Reset/Retry | `R` | `↺` button | Round restarts instantly, death counter increments |
+
+Touch controls display as on-screen button overlays. In portrait orientation the buttons are fixed at the bottom of the screen with larger tap targets (52px). In landscape they overlay the bottom of the canvas. Touch controls are only rendered on devices with touch support.
 
 ### 5.4 The Obstacle (Creature)
 
@@ -480,7 +483,7 @@ One single global leaderboard. Ranked by:
 
 - Shown after reaching the flagpole
 - Top 50 entries displayed
-- Player's own entry highlighted
+- Player's own entry highlighted — **not yet implemented**
 - Columns: Rank, Initials, Deaths, Time, Words Used
 - Also accessible from the main menu
 
@@ -521,27 +524,25 @@ Determined/
 ├── vercel.json             # Vercel config (routes, env)
 ├── package.json            # Dependencies (for Vercel serverless only)
 ├── GDD.md                  # This document
+├── PRIORITIES.md           # Prioritized post-MVP roadmap
 │
 ├── src/                    # Frontend game code
-│   ├── game.js             # Main game loop, canvas setup
+│   ├── game.js             # Main game loop, state machine, orchestration
 │   ├── player.js           # Stick figure player logic
-│   ├── obstacle.js         # Obstacle/creature entity
-│   ├── weapon.js           # Weapon mechanics
+│   ├── obstacle.js         # Obstacle/creature AI and behavior
+│   ├── weapon.js           # Weapon mechanics and projectiles
 │   ├── environment.js      # Environment item effect
 │   ├── renderer.js         # Canvas rendering / sprite composer
-│   ├── physics.js          # Gravity, collision detection
+│   ├── physics.js          # Gravity, collision detection (AABB)
 │   ├── input.js            # Keyboard + touch input handling
 │   ├── audio.js            # Web Audio API sound effects
 │   ├── hud.js              # HUD overlay (health, items, timer)
 │   ├── ui.js               # Menu screens, word entry, leaderboard display
-│   └── constants.js        # Game balance constants, screen dimensions
+│   └── constants.js        # Game balance constants, screen dimensions, flavor texts
 │
 ├── api/                    # Vercel serverless functions
-│   ├── generate.js         # LLM generation endpoint
+│   ├── generate.js         # LLM generation endpoint (Groq proxy, cache, rate limit)
 │   └── leaderboard.js      # Leaderboard CRUD endpoint
-│
-└── public/                 # Static assets (if any)
-    └── fonts/              # Retro pixel font (if not using system fonts)
 ```
 
 ### 11.3 Deployment
@@ -581,9 +582,9 @@ Mirrors the Block-You pattern:
 ```
 
 **Error Responses:**
-- `429` -- Rate limited (include retry-after header)
-- `400` -- Invalid input
-- `500` -- LLM failure (fallback data returned with `"fallback": true` flag)
+- `429` -- Rate limited (includes `retryAfter` field)
+- `400` -- Invalid input (missing words)
+- `200` with `"fallback": true` -- LLM failure; fallback data is returned so the game is always playable
 
 #### `GET /api/leaderboard`
 
@@ -599,22 +600,20 @@ Submits a new leaderboard entry.
 
 While the LLM generates content (or cache is retrieved), the player sees a loading screen with randomly chosen flavor text.
 
-### Flavor Text (100 pre-written messages)
+### Flavor Text (104 pre-written messages)
 
-Randomly selected from a pool. Examples:
+Randomly selected from a pool of 104 messages in `constants.js`. Examples:
 
 1. "Consulting the ancient word spirits..."
 2. "Your words are being forged into reality..."
-3. "A lion? Really? This should be interesting..."
-4. "Assembling pixels with questionable intent..."
-5. "The universe is judging your word choices..."
-6. "Generating chaos in 3... 2... 1..."
-7. "Your stick figure is stretching and preparing..."
-8. "Somewhere, a game designer is crying..."
-9. "Warning: results may vary. Dramatically."
-10. "The LLM is doing its best. No promises."
-
-*(Full list of 100 to be generated during implementation)*
+3. "Assembling pixels with questionable intent..."
+4. "The universe is judging your word choices..."
+5. "Generating chaos in 3... 2... 1..."
+6. "Your stick figure is stretching and preparing..."
+7. "Somewhere, a game designer is crying..."
+8. "Warning: results may vary. Dramatically."
+9. "The LLM is doing its best. No promises."
+10. "Stand by for procedurally generated regret..."
 
 ---
 
@@ -669,25 +668,27 @@ Level 1 establishes the core loop. Future levels could vary by:
 ## 15. MVP Scope (Level 1)
 
 ### Must Have (MVP)
-- [ ] Word entry screen (3 constrained category inputs)
-- [ ] Groq LLM integration via Vercel serverless function
-- [ ] Rate limiting (10/hr per IP, 50/hr global)
-- [ ] Exact-match caching via Vercel KV
-- [ ] Stick figure player with move, jump, attack, use item, reset
-- [ ] Programmatic sprite composition from LLM JSON
-- [ ] Single-screen level with obstacle, weapon, environment item
-- [ ] Obstacle with patrol, aggro, and attack behavior
-- [ ] Environment item as one-time use, resets on death
-- [ ] Flagpole victory trigger
-- [ ] Death counter and timer
-- [ ] Global leaderboard (Vercel KV)
-- [ ] Loading screen with flavor text
-- [ ] Retro sound effects (Web Audio API)
-- [ ] Keyboard controls (Arrows + WASD + attack/item keys)
-- [ ] Touch/mobile controls
-- [ ] Responsive layout (playable on mobile browsers)
-- [ ] Auto-deploy to Vercel on commit
-- [ ] Fallback defaults if LLM fails
+- [x] Word entry screen (3 constrained category inputs)
+- [x] Groq LLM integration via Vercel serverless function
+- [x] Rate limiting (10/hr per IP, 50/hr global)
+- [x] Exact-match caching via Vercel KV
+- [x] Stick figure player with move, jump, attack, use item, reset
+- [x] Programmatic sprite composition from LLM JSON
+- [x] Single-screen level with obstacle, weapon, environment item
+- [x] Obstacle with patrol, aggro, and attack behavior
+- [x] Environment item as one-time use, resets on death
+- [x] Flagpole victory trigger
+- [x] Death counter and timer
+- [x] Global leaderboard (Vercel KV)
+- [x] Loading screen with flavor text
+- [x] Retro sound effects (Web Audio API)
+- [x] Keyboard controls (Arrows + WASD + attack/item keys)
+- [x] Touch/mobile controls
+- [x] Responsive layout (playable on mobile browsers)
+- [x] Auto-deploy to Vercel on commit
+- [x] Fallback defaults if LLM fails
+
+All "Must Have" items have code implemented and deployed to Vercel. The Groq API key, Vercel KV, and auto-deploy are all confirmed working. See "Known Issues" and "Remaining Work" below for gaps in the current implementation.
 
 ### Nice to Have (Post-MVP)
 - [ ] More nuanced sprite composition (animations on generated entities)
@@ -698,6 +699,21 @@ Level 1 establishes the core loop. Future levels could vary by:
 - [ ] PWA support (offline play with cached content)
 - [ ] Analytics dashboard for popular words
 - [ ] Additional levels (2-5)
+
+### Known Issues
+
+- **Leaderboard initials not saved:** Entries are submitted and stored in Vercel KV, but the player's initials are not persisting correctly. Deaths, time, and word combos display on the leaderboard; initials appear blank.
+
+### Remaining Work (within MVP features)
+
+These items are part of features that are otherwise implemented but have gaps compared to what this GDD describes:
+
+- **Death animation (Section 5.2):** The GDD describes a "ragdoll collapse" animation. Currently the stick figure freezes in its last pose for 800ms, then the round restarts with no visual feedback.
+- **Player leaderboard highlight (Section 10.3):** The player's own entry is not highlighted on the leaderboard.
+- **Obstacle "charge" attack pattern (Section 8.4):** Listed as a valid `attack_pattern` in the JSON schema, but `obstacle.js` treats it identically to `melee`. No distinct rushing/charge behavior exists.
+- **Weapon "burn" special effect (Section 8.4):** Listed in the schema but `applySpecialEffect()` in `weapon.js` only handles `stun`, `freeze`, and `knockback`. `burn` falls through with no effect.
+- **Reset animation (Section 5.3):** The GDD originally described "Stick figure explodes" on reset. The current implementation restarts the round instantly with no explosion visual.
+- **LLM response validation (Section 8.5):** `validateData()` in `api/generate.js` only checks that top-level keys (`obstacle`, `weapon`, `environment_item`) exist. Individual field ranges are clamped client-side by `createObstacle()`, `createWeapon()`, and `createEnvironmentItem()`, but malformed sub-fields (e.g., invalid `visual.features` entries, wrong types) could still cause rendering glitches.
 
 ---
 
