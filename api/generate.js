@@ -266,6 +266,146 @@ function validateData(data) {
     typeof data.environment_item === 'object';
 }
 
+/** Ensure val is a finite number; if not, return fallback. */
+function num(val, fallback) {
+  return typeof val === 'number' && Number.isFinite(val) ? val : fallback;
+}
+
+/** Clamp a number to [min, max] with a fallback for non-numbers. */
+function clampNum(val, min, max, fallback) {
+  const n = num(val, fallback);
+  return Math.max(min, Math.min(max, n));
+}
+
+/** Validate a hex colour string; return fallback if invalid. */
+function hexColor(val, fallback) {
+  if (typeof val === 'string' && /^#[0-9A-Fa-f]{3,8}$/.test(val)) return val;
+  return fallback;
+}
+
+/** Ensure val is one of the allowed strings; return fallback otherwise. */
+function oneOf(val, allowed, fallback) {
+  return allowed.includes(val) ? val : fallback;
+}
+
+/** Sanitize a single visual feature object. */
+function sanitizeFeature(f) {
+  if (!f || typeof f !== 'object') return null;
+  const validTypes = ['circle', 'rectangle', 'triangle', 'line', 'arc', 'polygon'];
+  const type = oneOf(f.type, validTypes, 'rectangle');
+  const base = { type, label: typeof f.label === 'string' ? f.label : '', color: hexColor(f.color, '#888888') };
+  switch (type) {
+    case 'circle':
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), radius: clampNum(f.radius, 1, 200, 10) };
+    case 'rectangle':
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), width: clampNum(f.width, 1, 200, 20), height: clampNum(f.height, 1, 200, 20) };
+    case 'triangle':
+    case 'polygon':
+      if (Array.isArray(f.points) && f.points.length >= 3) {
+        return { ...base, points: f.points.slice(0, 12).map(p => Array.isArray(p) ? [num(p[0], 0), num(p[1], 0)] : [0, 0]) };
+      }
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), width: clampNum(f.width, 1, 200, 20), height: clampNum(f.height, 1, 200, 20), type: 'rectangle' };
+    case 'line':
+      return { ...base, x1: num(f.x1, 0), y1: num(f.y1, 0), x2: num(f.x2, 20), y2: num(f.y2, 20), lineWidth: clampNum(f.lineWidth, 1, 10, 2) };
+    case 'arc':
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), radius: clampNum(f.radius, 1, 200, 10), startAngle: num(f.startAngle, 0), endAngle: num(f.endAngle, Math.PI) };
+    default:
+      return base;
+  }
+}
+
+/**
+ * Deep-sanitize LLM output: clamp all numeric fields, validate enums,
+ * ensure visual.features items have required shape properties.
+ * Mutates and returns the data object.
+ */
+function sanitizeData(data) {
+  const o = data.obstacle;
+  if (o) {
+    o.name = typeof o.name === 'string' ? o.name.slice(0, 60) : 'Mysterious Creature';
+    o.description = typeof o.description === 'string' ? o.description.slice(0, 200) : '';
+    o.health = clampNum(o.health, 50, 200, 100);
+    o.attack_damage = clampNum(o.attack_damage, 5, 30, 15);
+    o.attack_pattern = oneOf(o.attack_pattern, ['melee', 'charge', 'projectile'], 'melee');
+    o.attack_cooldown = clampNum(o.attack_cooldown, 0.5, 3.0, 1.5);
+    o.movement_speed = clampNum(o.movement_speed, 1, 5, 2);
+    o.aggro_range = clampNum(o.aggro_range, 80, 200, 120);
+    o.weakness = typeof o.weakness === 'string' ? o.weakness.slice(0, 30) : 'sharp';
+    if (o.visual && typeof o.visual === 'object') {
+      o.visual.base_shape = oneOf(o.visual.base_shape, ['circle', 'rectangle', 'triangle'], 'circle');
+      o.visual.width = clampNum(o.visual.width, 30, 80, 50);
+      o.visual.height = clampNum(o.visual.height, 30, 80, 50);
+      o.visual.color_primary = hexColor(o.visual.color_primary, '#CC3333');
+      o.visual.color_secondary = hexColor(o.visual.color_secondary, '#FF6666');
+      o.visual.color_accent = hexColor(o.visual.color_accent, '#220000');
+      if (Array.isArray(o.visual.features)) {
+        o.visual.features = o.visual.features.slice(0, 8).map(sanitizeFeature).filter(Boolean);
+      } else {
+        o.visual.features = [];
+      }
+    }
+  }
+
+  const w = data.weapon;
+  if (w) {
+    w.name = typeof w.name === 'string' ? w.name.slice(0, 60) : 'Pointy Stick';
+    w.description = typeof w.description === 'string' ? w.description.slice(0, 200) : '';
+    w.damage = clampNum(w.damage, 10, 50, 20);
+    w.damage_type = oneOf(w.damage_type, ['fire', 'ice', 'electric', 'blunt', 'sharp', 'poison', 'holy', 'dark', 'arcane'], 'blunt');
+    w.attack_pattern = oneOf(w.attack_pattern, ['melee', 'projectile', 'area'], 'melee');
+    w.range = clampNum(w.range, 30, 200, 55);
+    w.cooldown = clampNum(w.cooldown, 0.2, 2.0, 0.5);
+    w.special_effect = oneOf(w.special_effect, ['knockback', 'stun', 'burn', 'freeze', 'none'], 'none');
+    w.special_effect_duration = clampNum(w.special_effect_duration, 0, 3, 0);
+    w.effectiveness_vs_obstacle = clampNum(w.effectiveness_vs_obstacle, 0.5, 3.0, 1.0);
+    if (w.visual && typeof w.visual === 'object') {
+      w.visual.base_shape = oneOf(w.visual.base_shape, ['line', 'rectangle', 'circle'], 'rectangle');
+      w.visual.width = clampNum(w.visual.width, 4, 80, 30);
+      w.visual.height = clampNum(w.visual.height, 2, 80, 8);
+      w.visual.color_primary = hexColor(w.visual.color_primary, '#8B4513');
+      w.visual.color_secondary = hexColor(w.visual.color_secondary, '#A0522D');
+      if (Array.isArray(w.visual.features)) {
+        w.visual.features = w.visual.features.slice(0, 8).map(sanitizeFeature).filter(Boolean);
+      } else {
+        w.visual.features = [];
+      }
+    }
+  }
+
+  const e = data.environment_item;
+  if (e) {
+    e.name = typeof e.name === 'string' ? e.name.slice(0, 60) : 'Mysterious Force';
+    e.description = typeof e.description === 'string' ? e.description.slice(0, 200) : '';
+    e.effect_type = oneOf(e.effect_type, ['damage', 'stun', 'terrain', 'buff', 'debuff', 'mixed'], 'damage');
+    e.damage = clampNum(e.damage, 0, 100, 30);
+    e.area_of_effect = oneOf(e.area_of_effect, ['full_screen', 'targeted', 'zone'], 'full_screen');
+    e.duration = clampNum(e.duration, 0, 10, 0.5);
+    e.screen_shake = clampNum(e.screen_shake, 0, 10, 5);
+    if (e.affects_player && typeof e.affects_player === 'object') {
+      e.affects_player.active = !!e.affects_player.active;
+      e.affects_player.effect = typeof e.affects_player.effect === 'string' ? e.affects_player.effect.slice(0, 100) : '';
+    } else {
+      e.affects_player = { active: true, effect: 'Takes minor damage' };
+    }
+    if (e.affects_obstacle && typeof e.affects_obstacle === 'object') {
+      e.affects_obstacle.active = !!e.affects_obstacle.active;
+      e.affects_obstacle.effect = typeof e.affects_obstacle.effect === 'string' ? e.affects_obstacle.effect.slice(0, 100) : '';
+    } else {
+      e.affects_obstacle = { active: true, effect: 'Takes major damage' };
+    }
+    if (e.visual_effect && typeof e.visual_effect === 'object') {
+      e.visual_effect.type = oneOf(e.visual_effect.type, ['overlay', 'particles', 'flash', 'weather'], 'flash');
+      e.visual_effect.color_primary = hexColor(e.visual_effect.color_primary, '#FFFFFF');
+      e.visual_effect.color_secondary = hexColor(e.visual_effect.color_secondary, '#FFFF00');
+      e.visual_effect.description = typeof e.visual_effect.description === 'string' ? e.visual_effect.description.slice(0, 200) : '';
+    } else {
+      e.visual_effect = { type: 'flash', color_primary: '#FFFFFF', color_secondary: '#FFFF00', description: '' };
+    }
+  }
+
+  return data;
+}
+
 // ── Handler ──
 
 module.exports = async function handler(req, res) {
@@ -309,6 +449,7 @@ module.exports = async function handler(req, res) {
     }
 
     if (validateData(data)) {
+      sanitizeData(data);
       await cacheResults(words, data);
       return res.status(200).json({ ...data, cached: false });
     }

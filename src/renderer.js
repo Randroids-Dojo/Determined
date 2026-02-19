@@ -159,8 +159,10 @@ function drawShape(ctx, shape) {
 export function drawStickFigure(ctx, player) {
   const cx = player.x + player.width / 2;
   const topY = player.y;
-  const color = player.invincibleTimer > 0 && Math.floor(Date.now() / 80) % 2
-    ? 'rgba(34,34,34,0.3)' : '#222';
+  const hitFlash = player.hitFlashTimer > 0;
+  const color = hitFlash ? '#FF2222'
+    : (player.invincibleTimer > 0 && Math.floor(Date.now() / 80) % 2)
+      ? 'rgba(34,34,34,0.3)' : '#222';
 
   ctx.save();
   ctx.strokeStyle = color;
