@@ -640,3 +640,212 @@ body {
   font-style: italic;
   margin-bottom: 20px;
 }
+
+/* ══════════════════════════════════════════════
+   Level 2 Touch Controls — Virtual Joystick + Buttons
+   ══════════════════════════════════════════════ */
+
+#touch-controls-3d {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ── Virtual Joystick Zone (left half of screen) ── */
+.touch3d-joystick-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.joystick-base {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100, 68, 204, 0.15) 0%, rgba(100, 68, 204, 0.05) 70%, transparent 100%);
+  border: 2px solid rgba(170, 102, 255, 0.3);
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  /* Default position — bottom-left area */
+  left: 80px;
+  top: calc(100% - 80px);
+}
+
+.joystick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(170, 102, 255, 0.6), rgba(100, 68, 204, 0.4));
+  border: 2px solid rgba(170, 102, 255, 0.7);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(170, 102, 255, 0.3);
+}
+
+/* ── 3D Action Buttons (right side) ── */
+.touch3d-actions {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: auto;
+}
+
+.touch3d-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: none;
+}
+
+.touch3d-btn:active {
+  background: rgba(170, 102, 255, 0.4);
+  border-color: #aa66ff;
+}
+
+/* Attack button — bigger and highlighted */
+.touch3d-attack {
+  width: 68px;
+  height: 68px;
+  font-size: 1.8rem;
+  border-color: rgba(255, 68, 68, 0.5);
+  background: rgba(180, 30, 30, 0.4);
+}
+
+.touch3d-attack:active {
+  background: rgba(255, 68, 68, 0.5);
+  border-color: #ff4444;
+}
+
+/* Jump button — medium with accent */
+.touch3d-jump {
+  border-color: rgba(68, 221, 255, 0.4);
+  background: rgba(20, 80, 120, 0.4);
+}
+
+.touch3d-jump:active {
+  background: rgba(68, 221, 255, 0.4);
+  border-color: #44ddff;
+}
+
+/* Item button */
+.touch3d-item {
+  width: 48px;
+  height: 48px;
+  font-size: 1.2rem;
+  border-color: rgba(255, 215, 0, 0.4);
+  background: rgba(120, 100, 0, 0.3);
+}
+
+.touch3d-item:active {
+  background: rgba(255, 215, 0, 0.4);
+  border-color: #FFD700;
+}
+
+/* Reset button — small and subtle */
+.touch3d-reset {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.touch3d-reset:active {
+  opacity: 1;
+  background: rgba(255, 100, 100, 0.3);
+}
+
+/* ── Portrait mobile: adjust 3D controls ── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .touch3d-attack {
+    width: 72px;
+    height: 72px;
+    font-size: 2rem;
+  }
+
+  .touch3d-jump {
+    width: 60px;
+    height: 60px;
+    font-size: 1.6rem;
+  }
+
+  .joystick-base {
+    width: 120px;
+    height: 120px;
+  }
+
+  .joystick-thumb {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* ── Landscape mobile: tighter layout ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch3d-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+    max-width: 160px;
+  }
+
+  .touch3d-attack {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+  }
+
+  .touch3d-jump {
+    width: 48px;
+    height: 48px;
+  }
+
+  .touch3d-item {
+    width: 42px;
+    height: 42px;
+  }
+
+  .touch3d-reset {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+
+  .joystick-base {
+    width: 90px;
+    height: 90px;
+  }
+
+  .joystick-thumb {
+    width: 38px;
+    height: 38px;
+  }
+}

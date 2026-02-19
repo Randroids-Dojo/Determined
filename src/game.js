@@ -10,7 +10,7 @@ import {
   STATE_VICTORY, STATE_LEADERBOARD,
   STATE_LEVEL2_INTRO, STATE_LEVEL2_LOADING, STATE_LEVEL2_PLAYING, STATE_LEVEL2_VICTORY,
 } from './constants.js';
-import { initInput, pollInput, snapshotKeys } from './input.js';
+import { initInput, pollInput, snapshotKeys, showTouchL1Controls, hideAllTouchControls } from './input.js';
 import {
   drawBackground, drawGround, drawFlag,
   drawStickFigure, drawVisual, applyScreenShake,
@@ -149,6 +149,7 @@ export function init() {
 function goToMenu() {
   state = STATE_MENU;
   llmData = null;
+  hideAllTouchControls();
   showMainMenu(goToWordEntry, goToLeaderboard);
 }
 
@@ -183,6 +184,7 @@ async function onWordsSubmitted(submittedWords) {
 function startGame(data) {
   state = STATE_PLAYING;
   hideUI();
+  showTouchL1Controls();
 
   player = createPlayer();
   obstacle = createObstacle(data.obstacle);
@@ -231,6 +233,7 @@ function onVictory() {
   state = STATE_VICTORY;
   player.state = 'victory';
   sfxVictory();
+  hideAllTouchControls();
 
   // Store Level 1 stats for Level 2
   level1Deaths = deaths;
@@ -279,6 +282,7 @@ async function goToLeaderboard() {
 
 function goToLevel2Intro() {
   state = STATE_LEVEL2_INTRO;
+  hideAllTouchControls();
   showLevel2Intro(words, startLevel2Game);
 }
 
@@ -301,6 +305,7 @@ async function startLevel2Game() {
 function onLevel2Victory(totalDeaths, totalTimeMs) {
   state = STATE_LEVEL2_VICTORY;
   cleanupLevel2();
+  hideAllTouchControls();
 
   showLevel2Victory(totalDeaths, totalTimeMs, words, goToMenu);
 }

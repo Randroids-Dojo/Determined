@@ -21,6 +21,7 @@
     <canvas id="game-canvas-3d" style="display:none;"></canvas>
     <canvas id="hud-canvas-3d" style="display:none;"></canvas>
     <div id="ui-overlay"></div>
+    <!-- Level 1 touch controls (simple buttons) -->
     <div id="touch-controls" style="display:none;">
       <div class="touch-left">
         <button data-action="left" class="touch-btn">◀</button>
@@ -31,6 +32,20 @@
         <button data-action="attack" class="touch-btn touch-attack">⚔</button>
         <button data-action="item" class="touch-btn touch-item">★</button>
         <button data-action="reset" class="touch-btn touch-reset">↺</button>
+      </div>
+    </div>
+    <!-- Level 2 touch controls (virtual joystick + 3D action buttons) -->
+    <div id="touch-controls-3d" style="display:none;">
+      <div class="touch3d-joystick-zone" id="joystick-zone">
+        <div class="joystick-base" id="joystick-base">
+          <div class="joystick-thumb" id="joystick-thumb"></div>
+        </div>
+      </div>
+      <div class="touch3d-actions">
+        <button data-action3d="attack" class="touch3d-btn touch3d-attack">⚔</button>
+        <button data-action3d="jump" class="touch3d-btn touch3d-jump">▲</button>
+        <button data-action3d="item" class="touch3d-btn touch3d-item">★</button>
+        <button data-action3d="reset" class="touch3d-btn touch3d-reset">↺</button>
       </div>
     </div>
   </div>
