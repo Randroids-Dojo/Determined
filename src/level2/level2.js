@@ -18,7 +18,7 @@ import {
   activateEnvironmentItem3D, disposeEnvironmentItem3D,
 } from './environment3d.js';
 import { drawHUD3D } from './hud3d.js';
-import { pollInput, snapshotKeys } from '../input.js';
+import { pollInput, snapshotKeys, showTouch3DControls, hideAllTouchControls } from '../input.js';
 import { sfxVictory } from '../audio.js';
 import { triggerScreenShake } from '../renderer.js';
 
@@ -80,6 +80,9 @@ export function startLevel2(data, prevDeaths, prevTimeMs, words, onVictory) {
   resetActive = false;
   running = true;
   onVictoryCallback = onVictory;
+
+  // Show 3D touch controls (virtual joystick + action buttons)
+  showTouch3DControls();
 
   // Start game loop
   gameLoop();
@@ -320,6 +323,9 @@ export function cleanupLevel2() {
   obstacle = null;
   weapon = null;
   envItem = null;
+
+  // Hide 3D touch controls
+  hideAllTouchControls();
 
   // Hide 3D canvases, show 2D
   if (canvas3d) canvas3d.style.display = 'none';
