@@ -88,9 +88,18 @@ const JSON_SCHEMA = `{
     "screen_shake": "number 0-10",
     "visual_effect": {
       "type": "overlay|particles|flash|weather",
+      "style": "bolt|flames|freeze|wind|explosion|beam|rain",
       "color_primary": "hex color",
       "color_secondary": "hex color",
       "description": "string"
+    },
+    "visual": {
+      "base_shape": "circle | rectangle | triangle",
+      "width": "number 20-30",
+      "height": "number 20-30",
+      "color_primary": "hex color",
+      "color_secondary": "hex color",
+      "features": "array of 2-5 shape objects (see feature shape docs) — small iconic logo"
     }
   }
 }`;
@@ -134,6 +143,8 @@ Rules:
 - The creature's weakness should relate to the weapon's damage type when it makes sense.
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
 - Use 4-8 features per creature to build a recognizable shape. Each feature should represent a distinct body part with a descriptive label.
+- The environment item's visual is a small 20-30px pickup icon. Use 2-5 features to build a simple, recognizable symbol of "${words.environment}" (e.g. a lightning bolt, snowflake, flame, raindrop, tornado shape). Keep it compact.
+- The environment item's visual_effect.style controls the targeted animation when the item is activated. Choose the best match for "${words.environment}": "bolt" for lightning/electricity/energy, "flames" for fire/heat/lava/magma, "freeze" for ice/snow/cold/frost, "wind" for tornado/hurricane/gust/storm, "explosion" for earthquake/shockwave/meteor/bomb, "beam" for laser/light/solar/radiation, "rain" for rain/hail/acid/flood.
 - Position features relative to the base shape (0,0 is top-left, width/height is bottom-right).
 - All numbers must be within the specified ranges.
 - Color values must be valid hex colors (e.g. "#FF0000").
@@ -181,8 +192,17 @@ const FALLBACK = {
     affects_obstacle: { active: true, effect: 'Takes damage and is stunned briefly' },
     screen_shake: 6,
     visual_effect: {
-      type: 'flash', color_primary: '#FFFFFF', color_secondary: '#FFD700',
+      type: 'flash', style: 'explosion', color_primary: '#FFFFFF', color_secondary: '#FFD700',
       description: 'A bright shockwave radiates outward',
+    },
+    visual: {
+      base_shape: 'circle', width: 24, height: 24,
+      color_primary: '#FFD700', color_secondary: '#FFFFFF',
+      features: [
+        { type: 'circle', label: 'ring_outer', x: 12, y: 12, radius: 10, color: '#FFD700' },
+        { type: 'circle', label: 'ring_inner', x: 12, y: 12, radius: 6, color: '#FFFFFF' },
+        { type: 'circle', label: 'core', x: 12, y: 12, radius: 3, color: '#FF8800' },
+      ],
     },
   },
 };
@@ -430,11 +450,24 @@ function sanitizeData(data) {
     }
     if (e.visual_effect && typeof e.visual_effect === 'object') {
       e.visual_effect.type = oneOf(e.visual_effect.type, ['overlay', 'particles', 'flash', 'weather'], 'flash');
+      e.visual_effect.style = oneOf(e.visual_effect.style, ['bolt', 'flames', 'freeze', 'wind', 'explosion', 'beam', 'rain'], 'explosion');
       e.visual_effect.color_primary = hexColor(e.visual_effect.color_primary, '#FFFFFF');
       e.visual_effect.color_secondary = hexColor(e.visual_effect.color_secondary, '#FFFF00');
       e.visual_effect.description = typeof e.visual_effect.description === 'string' ? e.visual_effect.description.slice(0, 200) : '';
     } else {
-      e.visual_effect = { type: 'flash', color_primary: '#FFFFFF', color_secondary: '#FFFF00', description: '' };
+      e.visual_effect = { type: 'flash', style: 'explosion', color_primary: '#FFFFFF', color_secondary: '#FFFF00', description: '' };
+    }
+    if (e.visual && typeof e.visual === 'object') {
+      e.visual.base_shape = oneOf(e.visual.base_shape, ['circle', 'rectangle', 'triangle'], 'circle');
+      e.visual.width = clampNum(e.visual.width, 16, 40, 24);
+      e.visual.height = clampNum(e.visual.height, 16, 40, 24);
+      e.visual.color_primary = hexColor(e.visual.color_primary, '#FFD700');
+      e.visual.color_secondary = hexColor(e.visual.color_secondary, '#FFFFFF');
+      if (Array.isArray(e.visual.features)) {
+        e.visual.features = e.visual.features.slice(0, 5).map(sanitizeFeature).filter(Boolean);
+      } else {
+        e.visual.features = [];
+      }
     }
   }
 
