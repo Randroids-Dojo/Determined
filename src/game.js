@@ -113,6 +113,15 @@ const FALLBACK_DATA = {
       color_secondary: '#FFD700',
       description: 'A bright shockwave radiates outward',
     },
+    visual: {
+      base_shape: 'circle', width: 24, height: 24,
+      color_primary: '#FFD700', color_secondary: '#FFFFFF',
+      features: [
+        { type: 'circle', label: 'ring_outer', x: 12, y: 12, radius: 10, color: '#FFD700' },
+        { type: 'circle', label: 'ring_inner', x: 12, y: 12, radius: 6, color: '#FFFFFF' },
+        { type: 'circle', label: 'core', x: 12, y: 12, radius: 3, color: '#FF8800' },
+      ],
+    },
   },
 };
 
@@ -164,7 +173,7 @@ function startGame(data) {
   player = createPlayer();
   obstacle = createObstacle(data.obstacle);
   weapon = createWeapon(data.weapon);
-  envItem = createEnvironmentItem(data.environment_item);
+  envItem = createEnvironmentItem(data.environment_item, words?.environment);
   deaths = 0;
   startTime = Date.now();
   elapsedMs = 0;
@@ -383,19 +392,30 @@ function render() {
     ctx.globalAlpha = pulseAlpha;
     ctx.fillStyle = envItem.visualEffect?.color_primary || '#44DDFF';
     ctx.beginPath();
-    ctx.arc(itemX, itemY, 16, 0, Math.PI * 2);
+    ctx.arc(itemX, itemY, 18, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // Star icon
-    ctx.save();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('\u2605', itemX, itemY);
+    // Item visual icon (LLM-generated from keyword)
+    if (envItem.visual) {
+      ctx.save();
+      drawVisual(ctx, envItem.visual, itemX - envItem.visual.width / 2, itemY - envItem.visual.height / 2);
+      ctx.restore();
+    } else {
+      // Fallback: first letter of keyword
+      ctx.save();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 16px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText((envItem.keyword || '?')[0].toUpperCase(), itemX, itemY);
+      ctx.restore();
+    }
+
     // Label
+    ctx.save();
     ctx.font = '9px monospace';
+    ctx.textAlign = 'center';
     ctx.fillStyle = '#44DDFF';
     ctx.fillText(envItem.name, itemX, itemY + 20);
     ctx.fillStyle = 'rgba(255,255,255,0.5)';

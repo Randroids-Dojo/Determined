@@ -13,10 +13,11 @@ function clamp(val, min, max) {
 /**
  * Create environment item from LLM data.
  */
-export function createEnvironmentItem(data) {
+export function createEnvironmentItem(data, keyword) {
   const d = data || {};
   return {
     name: d.name || 'Mysterious Force',
+    keyword: keyword || '',
     description: d.description || 'Something happens. To everyone.',
     effectType: d.effect_type || 'damage',   // damage | stun | terrain | buff | debuff | mixed
     damage: clamp(d.damage || 30, ENV_DMG_MIN, ENV_DMG_MAX),
@@ -31,6 +32,7 @@ export function createEnvironmentItem(data) {
       color_secondary: '#FFFF00',
       description: 'A bright flash fills the screen',
     },
+    visual: d.visual || null,
 
     // Runtime state
     active: false,
