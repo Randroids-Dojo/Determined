@@ -93,6 +93,11 @@ export function sfxDeath() {
   setTimeout(() => playNoise(0.25, 0.12), notes.length * 100);
 }
 
+export function sfxItemPickup() {
+  playTone(500, 0.08, 'triangle', 0.12);
+  playTone(700, 0.08, 'triangle', 0.1);
+}
+
 export function sfxItemUse() {
   const c = getCtx();
   const notes = [250, 400, 600, 900];

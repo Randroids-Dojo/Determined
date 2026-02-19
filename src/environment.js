@@ -35,7 +35,8 @@ export function createEnvironmentItem(data) {
     // Runtime state
     active: false,
     timer: 0,
-    used: false, // permanently used for this life
+    used: false,     // permanently used for this life
+    pickedUp: false, // must walk to item before using
   };
 }
 

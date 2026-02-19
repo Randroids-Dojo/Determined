@@ -22,7 +22,7 @@ import {
 } from './environment.js';
 import { aabbOverlap } from './physics.js';
 import { drawHUD, drawObstacleHP } from './hud.js';
-import { sfxVictory, resumeAudio } from './audio.js';
+import { sfxVictory, sfxItemPickup, resumeAudio } from './audio.js';
 import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
@@ -190,6 +190,7 @@ function restartRound() {
     envItem.used = false;
     envItem.active = false;
     envItem.timer = 0;
+    envItem.pickedUp = false;
   }
 }
 
@@ -291,8 +292,18 @@ function update(dt) {
     }
   }
 
-  // Use environment item
-  if (actions.item && envItem && !envItem.used) {
+  // Pick up environment item (player must walk to it)
+  if (envItem && !envItem.pickedUp && !envItem.used) {
+    const itemX = CANVAS_WIDTH * 0.35;
+    const itemHitbox = { x: itemX - 16, y: GROUND_Y - 46, width: 32, height: 46 };
+    if (aabbOverlap(player, itemHitbox)) {
+      envItem.pickedUp = true;
+      sfxItemPickup();
+    }
+  }
+
+  // Use environment item (must be picked up first)
+  if (actions.item && envItem && envItem.pickedUp && !envItem.used) {
     const result = activateEnvironmentItem(envItem);
     if (result) {
       if (result.obstacleDmg > 0) damageObstacle(obstacle, result.obstacleDmg);
@@ -360,8 +371,8 @@ function render() {
   // Environment effect overlay (behind entities)
   if (envItem) drawEnvironmentEffect(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  // Environment item pickup cue (floating icon on the ground)
-  if (envItem && !envItem.used && !envItem.active) {
+  // Environment item pickup cue (floating icon on the ground, hidden once picked up)
+  if (envItem && !envItem.pickedUp && !envItem.used && !envItem.active) {
     const itemX = CANVAS_WIDTH * 0.35;
     const bobOffset = Math.sin(Date.now() * 0.004) * 4;
     const itemY = GROUND_Y - 30 + bobOffset;
