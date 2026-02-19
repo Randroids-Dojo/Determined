@@ -184,11 +184,18 @@ function startGame(data) {
 
 function restartRound() {
   resetPlayer(player);
-  // Reset obstacle to initial state
+  // Reset obstacle to initial state (position, health, AI)
   if (obstacle) {
+    obstacle.x = obstacle.patrolCenter - obstacle.width / 2;
+    obstacle.y = GROUND_Y - obstacle.height;
+    obstacle.vx = 0;
+    obstacle.vy = 0;
     obstacle.hp = obstacle.maxHp;
     obstacle.dead = false;
     obstacle.state = 'patrol';
+    obstacle.patrolDir = -1;
+    obstacle.facingLeft = true;
+    obstacle.attackTimer = 0;
     obstacle.stunTimer = 0;
     obstacle.deathTimer = 0;
     obstacle.projectiles = [];
