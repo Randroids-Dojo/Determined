@@ -80,7 +80,8 @@ export function activateEnvironmentItem(item) {
   let stunDuration = 0;
 
   if (item.affectsObstacle?.active) {
-    if (item.effectType === 'damage' || item.effectType === 'mixed') {
+    // Always deal damage if the item has a damage value
+    if (item.damage > 0) {
       obstacleDmg = item.damage;
     }
     if (item.effectType === 'stun' || item.effectType === 'mixed') {
@@ -284,9 +285,9 @@ export function updateEnvironmentItem(item, dt) {
 }
 
 /**
- * Draw the full environment effect: ambient overlay + targeted animation.
+ * Draw the ambient overlay (subtle background tint) — call BEFORE drawing entities.
  */
-export function drawEnvironmentEffect(ctx, item, canvasWidth, canvasHeight) {
+export function drawEnvironmentAmbient(ctx, item, canvasWidth, canvasHeight) {
   if (!item.active) return;
 
   const progress = item.timer / Math.max(item.duration, 500);
@@ -295,7 +296,6 @@ export function drawEnvironmentEffect(ctx, item, canvasWidth, canvasHeight) {
 
   ctx.save();
 
-  // ── Ambient overlay (subtle background tint) ──
   switch (ve?.type) {
     case 'flash':
       ctx.fillStyle = `${ve.color_primary || '#FFFFFF'}${Math.round(alpha * 255).toString(16).padStart(2, '0')}`;
@@ -339,8 +339,14 @@ export function drawEnvironmentEffect(ctx, item, canvasWidth, canvasHeight) {
   }
 
   ctx.restore();
+}
 
-  // ── Targeted effect (keyword-matched animation) ──
+/**
+ * Draw the targeted effect (particles, bolts, beams, etc.) — call AFTER drawing entities.
+ */
+export function drawEnvironmentTargeted(ctx, item) {
+  if (!item.active) return;
+  const progress = item.timer / Math.max(item.duration, 500);
   drawTargetedEffect(ctx, item, progress);
 }
 

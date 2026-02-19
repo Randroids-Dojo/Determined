@@ -18,7 +18,8 @@ import { createObstacle, updateObstacle, damageObstacle, stunObstacle, fireProje
 import { createWeapon, processAttack, updateWeaponProjectiles } from './weapon.js';
 import {
   createEnvironmentItem, activateEnvironmentItem,
-  spawnEnvironmentEffect, updateEnvironmentItem, drawEnvironmentEffect,
+  spawnEnvironmentEffect, updateEnvironmentItem,
+  drawEnvironmentAmbient, drawEnvironmentTargeted,
 } from './environment.js';
 import { aabbOverlap } from './physics.js';
 import { drawHUD, drawObstacleHP } from './hud.js';
@@ -387,8 +388,8 @@ function render() {
   drawGround(ctx);
   drawFlag(ctx);
 
-  // Environment effect overlay (behind entities)
-  if (envItem) drawEnvironmentEffect(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
+  // Environment ambient overlay (behind entities)
+  if (envItem) drawEnvironmentAmbient(ctx, envItem, CANVAS_WIDTH, CANVAS_HEIGHT);
 
   // Environment item pickup cue (floating icon on the ground, hidden once picked up)
   if (envItem && !envItem.pickedUp && !envItem.used && !envItem.active) {
@@ -472,6 +473,9 @@ function render() {
       }
     }
   }
+
+  // Environment targeted effect (in front of obstacle)
+  if (envItem) drawEnvironmentTargeted(ctx, envItem);
 
   // Weapon projectiles (draw using weapon visual or colored circle)
   if (weapon) {
