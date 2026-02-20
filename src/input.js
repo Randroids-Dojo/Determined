@@ -108,11 +108,16 @@ let joystickCenterY = 0;
 const JOYSTICK_RADIUS = 50; // pixels — max thumb displacement
 const JOYSTICK_DEADZONE = 0.15; // ignore tiny movements
 
-// Camera swipe (right side)
+// Camera joystick (right side)
 let cameraTouchId = null;
 let cameraLastX = 0;
 let cameraLastY = 0;
 let cameraZoneEl = null;
+let camJoystickBaseEl = null;
+let camJoystickThumbEl = null;
+let camCenterX = 0;
+let camCenterY = 0;
+const CAM_JOYSTICK_RADIUS = 50;
 
 function createTouch3DControls() {
   if (!('ontouchstart' in window)) return;
@@ -128,8 +133,10 @@ function createTouch3DControls() {
     joystickZoneEl.addEventListener('touchcancel', onJoystickEnd, { passive: false });
   }
 
-  // Camera swipe zone
+  // Camera joystick zone
   cameraZoneEl = document.getElementById('camera-zone');
+  camJoystickBaseEl = document.getElementById('cam-joystick-base');
+  camJoystickThumbEl = document.getElementById('cam-joystick-thumb');
   if (cameraZoneEl) {
     cameraZoneEl.addEventListener('touchstart', onCameraStart, { passive: false });
     cameraZoneEl.addEventListener('touchmove', onCameraMove, { passive: false });
@@ -247,6 +254,19 @@ function onCameraStart(e) {
   cameraTouchId = touch.identifier;
   cameraLastX = touch.clientX;
   cameraLastY = touch.clientY;
+  camCenterX = touch.clientX;
+  camCenterY = touch.clientY;
+
+  // Show camera joystick at touch point
+  if (camJoystickBaseEl && cameraZoneEl) {
+    const rect = cameraZoneEl.getBoundingClientRect();
+    camJoystickBaseEl.style.left = (touch.clientX - rect.left) + 'px';
+    camJoystickBaseEl.style.top = (touch.clientY - rect.top) + 'px';
+    camJoystickBaseEl.style.opacity = '1';
+  }
+  if (camJoystickThumbEl) {
+    camJoystickThumbEl.style.transform = 'translate(-50%, -50%)';
+  }
 }
 
 function onCameraMove(e) {
@@ -262,12 +282,23 @@ function onCameraMove(e) {
   }
   if (!touch) return;
 
-  // Accumulate delta
+  // Accumulate delta for camera rotation
   cameraDeltaX += touch.clientX - cameraLastX;
   cameraDeltaY += touch.clientY - cameraLastY;
-
   cameraLastX = touch.clientX;
   cameraLastY = touch.clientY;
+
+  // Update camera joystick thumb visual
+  if (camJoystickThumbEl) {
+    let dx = touch.clientX - camCenterX;
+    let dy = touch.clientY - camCenterY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > CAM_JOYSTICK_RADIUS) {
+      dx = (dx / dist) * CAM_JOYSTICK_RADIUS;
+      dy = (dy / dist) * CAM_JOYSTICK_RADIUS;
+    }
+    camJoystickThumbEl.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+  }
 }
 
 function onCameraEnd(e) {
@@ -275,6 +306,9 @@ function onCameraEnd(e) {
   for (let i = 0; i < e.changedTouches.length; i++) {
     if (e.changedTouches[i].identifier === cameraTouchId) {
       cameraTouchId = null;
+      // Reset camera joystick visual
+      if (camJoystickBaseEl) camJoystickBaseEl.style.opacity = '0.5';
+      if (camJoystickThumbEl) camJoystickThumbEl.style.transform = 'translate(-50%, -50%)';
       return;
     }
   }
