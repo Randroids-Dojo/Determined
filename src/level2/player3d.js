@@ -94,8 +94,12 @@ export function createPlayer3D(scene) {
 
 /**
  * Update the 3D player each frame.
+ * @param {Object} player
+ * @param {Object} actions — input actions
+ * @param {number} dt — delta time in seconds
+ * @param {number} cameraYaw — camera yaw in radians (for camera-relative movement)
  */
-export function updatePlayer3D(player, actions, dt) {
+export function updatePlayer3D(player, actions, dt, cameraYaw) {
   if (player.dead) return;
 
   // Timers
@@ -105,25 +109,32 @@ export function updatePlayer3D(player, actions, dt) {
 
   player.animFrame++;
 
-  // Movement (WASD/Arrows: left/right = strafe, forward/backward = depth)
-  let moveX = 0;
-  let moveZ = 0;
+  // Movement input (local to camera)
+  let inputX = 0;
+  let inputZ = 0;
   let moving = false;
 
-  if (actions.left) { moveX -= 1; moving = true; }
-  if (actions.right) { moveX += 1; moving = true; }
-  if (actions.forward) { moveZ -= 1; moving = true; }
-  if (actions.backward) { moveZ += 1; moving = true; }
+  if (actions.left) { inputX -= 1; moving = true; }
+  if (actions.right) { inputX += 1; moving = true; }
+  if (actions.forward) { inputZ -= 1; moving = true; }
+  if (actions.backward) { inputZ += 1; moving = true; }
 
-  // Normalize movement
-  if (moveX !== 0 || moveZ !== 0) {
-    const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
-    moveX /= len;
-    moveZ /= len;
+  // Transform input to world-space using camera yaw
+  if (inputX !== 0 || inputZ !== 0) {
+    const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
+    inputX /= len;
+    inputZ /= len;
+
+    // Rotate input by camera yaw so "forward" = away from camera
+    const cos = Math.cos(cameraYaw || 0);
+    const sin = Math.sin(cameraYaw || 0);
+    const moveX = inputX * cos + inputZ * sin;
+    const moveZ = -inputX * sin + inputZ * cos;
+
     player.vx += moveX * L2_PLAYER_SPEED;
     player.vz += moveZ * L2_PLAYER_SPEED;
 
-    // Update facing direction
+    // Update facing direction (world-space)
     player.facing.set(moveX, 0, moveZ).normalize();
   }
 

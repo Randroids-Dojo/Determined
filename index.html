@@ -34,13 +34,17 @@
         <button data-action="reset" class="touch-btn touch-reset">↺</button>
       </div>
     </div>
-    <!-- Level 2 touch controls (virtual joystick + 3D action buttons) -->
+    <!-- Level 2 touch controls (dual-stick: move + camera) -->
     <div id="touch-controls-3d" style="display:none;">
+      <!-- Left: movement joystick -->
       <div class="touch3d-joystick-zone" id="joystick-zone">
         <div class="joystick-base" id="joystick-base">
           <div class="joystick-thumb" id="joystick-thumb"></div>
         </div>
       </div>
+      <!-- Right: camera swipe zone -->
+      <div class="touch3d-camera-zone" id="camera-zone"></div>
+      <!-- Action buttons (float above camera zone) -->
       <div class="touch3d-actions">
         <button data-action3d="attack" class="touch3d-btn touch3d-attack">⚔</button>
         <button data-action3d="jump" class="touch3d-btn touch3d-jump">▲</button>

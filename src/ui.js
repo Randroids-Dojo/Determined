@@ -269,11 +269,17 @@ export function showLevel2Intro(words, onStart) {
       <div class="level2-controls-info">
         <p class="controls-header">3D ARENA CONTROLS</p>
         <div class="controls-grid">
-          <span class="key">A/D</span> <span>Strafe left/right</span>
-          <span class="key">W/SPACE</span> <span>Jump</span>
+          <span class="key">WASD</span> <span>Move (camera-relative)</span>
+          <span class="key">Q/E</span> <span>Rotate camera</span>
+          <span class="key">SPACE</span> <span>Jump</span>
           <span class="key">J/Z</span> <span>Attack</span>
           <span class="key">K/X</span> <span>Use item</span>
           <span class="key">R</span> <span>Reset</span>
+        </div>
+        <p class="controls-header" style="margin-top:8px">TOUCH</p>
+        <div class="controls-grid">
+          <span class="key">Left</span> <span>Joystick to move</span>
+          <span class="key">Right</span> <span>Swipe to look around</span>
         </div>
       </div>
       <p class="level2-objective">Defeat the creature to win.</p>

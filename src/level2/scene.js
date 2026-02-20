@@ -1,5 +1,6 @@
 /**
- * Scene — Three.js scene setup: renderer, camera, lights, fog, skybox.
+ * Scene — Three.js scene setup: renderer, camera, lights, fog.
+ * Supports orbital camera that can be rotated by touch/mouse/keyboard.
  */
 
 import * as THREE from 'three';
@@ -9,6 +10,13 @@ let renderer = null;
 let scene = null;
 let camera = null;
 let clock = null;
+
+// Camera orbit state
+let cameraYaw = 0;        // Horizontal orbit angle (radians)
+let cameraPitch = 0.55;    // Vertical orbit angle (radians), 0 = level, PI/2 = top-down
+const CAMERA_PITCH_MIN = 0.15;
+const CAMERA_PITCH_MAX = 1.25;
+const CAMERA_SENSITIVITY = 0.004;  // Radians per pixel of touch/mouse drag
 
 export function createScene(canvas3d) {
   // Renderer
@@ -59,22 +67,65 @@ export function createScene(canvas3d) {
   // Clock
   clock = new THREE.Clock();
 
+  // Reset orbit
+  cameraYaw = 0;
+  cameraPitch = 0.55;
+
   return { renderer, scene, camera, clock };
 }
 
 /**
- * Update the camera to follow a target position (the player).
+ * Apply camera input (from touch swipe or mouse drag).
+ * @param {number} dx — horizontal pixel delta (positive = swipe right = rotate right)
+ * @param {number} dy — vertical pixel delta (positive = swipe down = look up)
  */
-export function updateCamera(camera, targetPos, dt) {
-  const idealOffset = new THREE.Vector3(
-    targetPos.x * 0.3,
-    L2_CAMERA_HEIGHT,
-    targetPos.z + L2_CAMERA_DISTANCE,
-  );
+export function applyCameraInput(dx, dy) {
+  cameraYaw -= dx * CAMERA_SENSITIVITY;
+  cameraPitch += dy * CAMERA_SENSITIVITY;
+  cameraPitch = Math.max(CAMERA_PITCH_MIN, Math.min(CAMERA_PITCH_MAX, cameraPitch));
+}
 
-  // Smooth camera follow
-  camera.position.lerp(idealOffset, 3.0 * dt);
-  camera.lookAt(targetPos.x * 0.5, 1.0, targetPos.z * 0.5);
+/**
+ * Rotate camera yaw by a fixed amount (for keyboard Q/E).
+ */
+export function rotateCameraYaw(amount) {
+  cameraYaw += amount;
+}
+
+/**
+ * Get the current camera yaw for camera-relative player movement.
+ */
+export function getCameraYaw() {
+  return cameraYaw;
+}
+
+/**
+ * Update the camera to orbit around and follow the player.
+ */
+export function updateCamera(cam, targetPos, dt) {
+  // Spherical offset from player
+  const dist = L2_CAMERA_DISTANCE;
+  const height = dist * Math.sin(cameraPitch);
+  const horizontalDist = dist * Math.cos(cameraPitch);
+
+  const idealX = targetPos.x + Math.sin(cameraYaw) * horizontalDist;
+  const idealY = targetPos.y + height;
+  const idealZ = targetPos.z + Math.cos(cameraYaw) * horizontalDist;
+
+  // Smooth follow
+  cam.position.lerp(new THREE.Vector3(idealX, idealY, idealZ), 5.0 * dt);
+
+  // Look at a point slightly above the player
+  const lookTarget = new THREE.Vector3(targetPos.x, targetPos.y + 1.0, targetPos.z);
+  cam.lookAt(lookTarget);
+}
+
+/**
+ * Reset camera orbit to default.
+ */
+export function resetCameraOrbit() {
+  cameraYaw = 0;
+  cameraPitch = 0.55;
 }
 
 export function renderScene() {
