@@ -5,7 +5,11 @@
 
 import * as THREE from 'three';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
-import { createScene, updateCamera, renderScene, disposeScene, getScene, getCamera, getClock } from './scene.js';
+import {
+  createScene, updateCamera, renderScene, disposeScene,
+  getScene, getCamera, getClock,
+  applyCameraInput, getCameraYaw, resetCameraOrbit,
+} from './scene.js';
 import { createArena, updateArena, disposeArena } from './arena.js';
 import { createPlayer3D, updatePlayer3D, damagePlayer3D, tryAttack3D, resetPlayer3D, disposePlayer3D } from './player3d.js';
 import {
@@ -18,7 +22,7 @@ import {
   activateEnvironmentItem3D, disposeEnvironmentItem3D,
 } from './environment3d.js';
 import { drawHUD3D } from './hud3d.js';
-import { pollInput, snapshotKeys, showTouch3DControls, hideAllTouchControls } from '../input.js';
+import { pollInput, snapshotKeys, consumeCameraInput, showTouch3DControls, hideAllTouchControls } from '../input.js';
 import { sfxVictory } from '../audio.js';
 import { triggerScreenShake } from '../renderer.js';
 
@@ -101,8 +105,14 @@ function gameLoop() {
 }
 
 function update(dt, elapsed) {
-  const actions = pollInput();
+  const actions = pollInput(dt);
   snapshotKeys();
+
+  // Apply camera input (touch swipe + keyboard Q/E)
+  const camInput = consumeCameraInput();
+  if (camInput.dx !== 0 || camInput.dy !== 0) {
+    applyCameraInput(camInput.dx, camInput.dy);
+  }
 
   elapsedMs = Date.now() - startTime;
 
@@ -128,8 +138,9 @@ function update(dt, elapsed) {
     return;
   }
 
-  // Update player
-  updatePlayer3D(player, actions, dt);
+  // Update player (camera-relative movement)
+  const cameraYaw = getCameraYaw();
+  updatePlayer3D(player, actions, dt, cameraYaw);
 
   // Attack
   if (actions.attack && weapon) {
@@ -225,6 +236,7 @@ function render(dt, elapsed) {
 
 function restartRound() {
   resetPlayer3D(player);
+  resetCameraOrbit();
 
   // Reset obstacle
   if (obstacle) {

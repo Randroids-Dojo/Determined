@@ -642,7 +642,8 @@ body {
 }
 
 /* ══════════════════════════════════════════════
-   Level 2 Touch Controls — Virtual Joystick + Buttons
+   Level 2 Touch Controls — Dual-Stick + Action Buttons
+   Left joystick = move, Right swipe = camera, Buttons = actions
    ══════════════════════════════════════════════ */
 
 #touch-controls-3d {
@@ -656,12 +657,12 @@ body {
   z-index: 20;
 }
 
-/* ── Virtual Joystick Zone (left half of screen) ── */
+/* ── Movement Joystick Zone (left ~40% of screen) ── */
 .touch3d-joystick-zone {
   position: absolute;
   left: 0;
   top: 0;
-  width: 50%;
+  width: 40%;
   height: 100%;
   pointer-events: auto;
   touch-action: none;
@@ -695,16 +696,30 @@ body {
   box-shadow: 0 0 10px rgba(170, 102, 255, 0.3);
 }
 
-/* ── 3D Action Buttons (right side) ── */
+/* ── Camera Swipe Zone (right ~60% of screen) ── */
+.touch3d-camera-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* ── 3D Action Buttons (float over camera zone, bottom-right) ── */
 .touch3d-actions {
   position: absolute;
   right: calc(12px + env(safe-area-inset-right, 0px));
   bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 8px;
   align-items: center;
-  gap: 10px;
+  justify-items: center;
   pointer-events: auto;
+  z-index: 25; /* Above camera zone */
 }
 
 .touch3d-btn {
@@ -810,11 +825,7 @@ body {
 /* ── Landscape mobile: tighter layout ── */
 @media (max-height: 500px) and (orientation: landscape) {
   .touch3d-actions {
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 8px;
-    max-width: 160px;
+    gap: 6px;
   }
 
   .touch3d-attack {

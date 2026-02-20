@@ -1,9 +1,9 @@
 /**
  * Input handler — keyboard + touch controls.
  * Tracks which actions are currently active each frame.
- * Supports both 2D (Level 1) and 3D (Level 2) control schemes.
  *
- * Level 2 adds a virtual joystick for movement and dedicated 3D action buttons.
+ * Level 1: Simple touch buttons (left/right/jump/attack/item/reset)
+ * Level 2: Dual-stick — left joystick (movement) + right swipe (camera) + action buttons
  */
 
 const keys = {};
@@ -17,6 +17,10 @@ const actions = {
   item: false,
   reset: false,
 };
+
+// Camera input — accumulated pixel deltas each frame
+let cameraDeltaX = 0;
+let cameraDeltaY = 0;
 
 // ── Keyboard ──
 
@@ -41,6 +45,13 @@ function updateActionsFromKeys() {
   actions.attack = !!(keys['KeyJ'] || keys['KeyZ']);
   actions.item = !!(keys['KeyK'] || keys['KeyX']);
   actions.reset = !!keys['KeyR'];
+}
+
+// Keyboard camera rotation (Q/E keys)
+function updateCameraFromKeys(dt) {
+  const rotSpeed = 2.5; // radians per second
+  if (keys['KeyQ']) cameraDeltaX -= rotSpeed * dt * (1 / 0.004); // convert to pixel-equivalent
+  if (keys['KeyE']) cameraDeltaX += rotSpeed * dt * (1 / 0.004);
 }
 
 // ── Touch controls (Level 1 — simple buttons) ──
@@ -81,8 +92,9 @@ function updateActionsFromTouch() {
   if (touchBtns.reset) actions.reset = true;
 }
 
-// ── Touch controls (Level 2 — virtual joystick + 3D buttons) ──
+// ── Touch controls (Level 2 — dual stick + action buttons) ──
 
+// Movement joystick (left side)
 let touch3dBtns = {};
 let joystickActive = false;
 let joystickX = 0; // -1 to 1
@@ -96,19 +108,34 @@ let joystickCenterY = 0;
 const JOYSTICK_RADIUS = 50; // pixels — max thumb displacement
 const JOYSTICK_DEADZONE = 0.15; // ignore tiny movements
 
+// Camera swipe (right side)
+let cameraTouchId = null;
+let cameraLastX = 0;
+let cameraLastY = 0;
+let cameraZoneEl = null;
+
 function createTouch3DControls() {
   if (!('ontouchstart' in window)) return;
 
+  // Movement joystick
   joystickZoneEl = document.getElementById('joystick-zone');
   joystickBaseEl = document.getElementById('joystick-base');
   joystickThumbEl = document.getElementById('joystick-thumb');
-  if (!joystickZoneEl || !joystickBaseEl || !joystickThumbEl) return;
+  if (joystickZoneEl && joystickBaseEl && joystickThumbEl) {
+    joystickZoneEl.addEventListener('touchstart', onJoystickStart, { passive: false });
+    joystickZoneEl.addEventListener('touchmove', onJoystickMove, { passive: false });
+    joystickZoneEl.addEventListener('touchend', onJoystickEnd, { passive: false });
+    joystickZoneEl.addEventListener('touchcancel', onJoystickEnd, { passive: false });
+  }
 
-  // Joystick touch handling
-  joystickZoneEl.addEventListener('touchstart', onJoystickStart, { passive: false });
-  joystickZoneEl.addEventListener('touchmove', onJoystickMove, { passive: false });
-  joystickZoneEl.addEventListener('touchend', onJoystickEnd, { passive: false });
-  joystickZoneEl.addEventListener('touchcancel', onJoystickEnd, { passive: false });
+  // Camera swipe zone
+  cameraZoneEl = document.getElementById('camera-zone');
+  if (cameraZoneEl) {
+    cameraZoneEl.addEventListener('touchstart', onCameraStart, { passive: false });
+    cameraZoneEl.addEventListener('touchmove', onCameraMove, { passive: false });
+    cameraZoneEl.addEventListener('touchend', onCameraEnd, { passive: false });
+    cameraZoneEl.addEventListener('touchcancel', onCameraEnd, { passive: false });
+  }
 
   // 3D action buttons
   const container3d = document.getElementById('touch-controls-3d');
@@ -118,17 +145,22 @@ function createTouch3DControls() {
     const action = btn.dataset.action3d;
     btn.addEventListener('touchstart', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       touch3dBtns[action] = true;
     }, { passive: false });
     btn.addEventListener('touchend', (e) => {
       e.preventDefault();
+      e.stopPropagation();
       touch3dBtns[action] = false;
     }, { passive: false });
-    btn.addEventListener('touchcancel', () => {
+    btn.addEventListener('touchcancel', (e) => {
+      e.stopPropagation();
       touch3dBtns[action] = false;
     });
   });
 }
+
+// ── Movement Joystick Handlers ──
 
 function onJoystickStart(e) {
   e.preventDefault();
@@ -205,6 +237,51 @@ function onJoystickEnd(e) {
   }
 }
 
+// ── Camera Swipe Handlers ──
+
+function onCameraStart(e) {
+  e.preventDefault();
+  if (cameraTouchId !== null) return; // Already tracking
+
+  const touch = e.changedTouches[0];
+  cameraTouchId = touch.identifier;
+  cameraLastX = touch.clientX;
+  cameraLastY = touch.clientY;
+}
+
+function onCameraMove(e) {
+  e.preventDefault();
+  if (cameraTouchId === null) return;
+
+  let touch = null;
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === cameraTouchId) {
+      touch = e.changedTouches[i];
+      break;
+    }
+  }
+  if (!touch) return;
+
+  // Accumulate delta
+  cameraDeltaX += touch.clientX - cameraLastX;
+  cameraDeltaY += touch.clientY - cameraLastY;
+
+  cameraLastX = touch.clientX;
+  cameraLastY = touch.clientY;
+}
+
+function onCameraEnd(e) {
+  e.preventDefault();
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    if (e.changedTouches[i].identifier === cameraTouchId) {
+      cameraTouchId = null;
+      return;
+    }
+  }
+}
+
+// ── Joystick → Actions ──
+
 function updateActionsFromTouch3D() {
   // Joystick → movement actions
   if (joystickActive) {
@@ -226,7 +303,7 @@ function updateActionsFromTouch3D() {
 let level2Active = false;
 
 /**
- * Show Level 2 touch controls (virtual joystick + 3D buttons).
+ * Show Level 2 touch controls (dual-stick + action buttons).
  * Hides Level 1 touch controls.
  */
 export function showTouch3DControls() {
@@ -257,6 +334,9 @@ export function showTouchL1Controls() {
   joystickX = 0;
   joystickY = 0;
   joystickTouchId = null;
+  cameraTouchId = null;
+  cameraDeltaX = 0;
+  cameraDeltaY = 0;
   touch3dBtns = {};
 }
 
@@ -279,7 +359,11 @@ export function initInput() {
   createTouch3DControls();
 }
 
-export function pollInput() {
+/**
+ * Poll actions and camera input each frame.
+ * @param {number} [dt] — delta time for keyboard camera rotation
+ */
+export function pollInput(dt) {
   // Reset actions, then rebuild from current state
   actions.left = false;
   actions.right = false;
@@ -293,11 +377,24 @@ export function pollInput() {
 
   if (level2Active) {
     updateActionsFromTouch3D();
+    if (dt) updateCameraFromKeys(dt);
   } else {
     updateActionsFromTouch();
   }
 
   return actions;
+}
+
+/**
+ * Get accumulated camera delta since last call, then reset.
+ * Returns { dx, dy } in pixels.
+ */
+export function consumeCameraInput() {
+  const dx = cameraDeltaX;
+  const dy = cameraDeltaY;
+  cameraDeltaX = 0;
+  cameraDeltaY = 0;
+  return { dx, dy };
 }
 
 export function destroyInput() {
