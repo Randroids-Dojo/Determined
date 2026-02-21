@@ -481,14 +481,17 @@ export function showAssetsScreen(assetList, onSelectAsset, onBack) {
  * Show the asset detail view with 2D and 3D canvases side by side.
  * Returns the canvas elements so the caller can start the viewer.
  */
-export function showAssetDetail(assetItem, onBack) {
+export function showAssetDetail(assetItem, onBack, onRegenerate) {
   clearOverlay();
   showOverlay();
 
   overlayEl.innerHTML = `
     <div class="asset-detail-screen">
       <div class="asset-detail-header">
-        <button id="btn-detail-back" class="btn btn-secondary btn-back">BACK</button>
+        <div class="asset-detail-buttons">
+          <button id="btn-detail-back" class="btn btn-secondary btn-back">BACK</button>
+          <button id="btn-regenerate" class="btn btn-regenerate">REGENERATE</button>
+        </div>
         <div class="asset-detail-info">
           <span class="asset-type-badge asset-type-${assetItem.type}">${assetItem.type.toUpperCase()}</span>
           <h3>${escapeHtml(assetItem.entityData?.name || assetItem.word)}</h3>
@@ -512,6 +515,10 @@ export function showAssetDetail(assetItem, onBack) {
   document.getElementById('btn-detail-back').addEventListener('click', () => {
     sfxMenuSelect();
     onBack();
+  });
+  document.getElementById('btn-regenerate').addEventListener('click', () => {
+    sfxMenuSelect();
+    onRegenerate();
   });
 
   return {

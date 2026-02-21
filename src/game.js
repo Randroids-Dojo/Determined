@@ -356,11 +356,41 @@ function goToAssets() {
 
 function goToAssetDetail(assetItem) {
   state = STATE_ASSET_DETAIL;
-  const { canvas2d, canvas3d } = showAssetDetail(assetItem, () => {
+  showDetailForItem(assetItem);
+}
+
+function showDetailForItem(item) {
+  stopAssetViewer();
+  const { canvas2d, canvas3d } = showAssetDetail(item, () => {
     stopAssetViewer();
     goToAssets();
-  });
-  startAssetViewer(canvas2d, canvas3d, assetItem.entityData);
+  }, () => regenerateAsset(item));
+  startAssetViewer(canvas2d, canvas3d, item.entityData);
+}
+
+const TYPE_TO_KEY = { creature: 'obstacle', weapon: 'weapon', environment: 'environment_item' };
+
+async function regenerateAsset(item) {
+  stopAssetViewer();
+  showLoadingScreen();
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: item.words, nocache: true }),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    saveAssets(item.words, data);
+
+    const newEntityData = data[TYPE_TO_KEY[item.type]];
+    showDetailForItem({ ...item, entityData: newEntityData });
+  } catch (err) {
+    console.warn('Regeneration failed:', err);
+    showDetailForItem(item);
+  }
 }
 
 // ── Main game loop ──

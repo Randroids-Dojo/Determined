@@ -53,7 +53,7 @@ const JSON_SCHEMA = `{
       "color_primary": "hex color - body color",
       "color_secondary": "hex color",
       "color_accent": "hex color",
-      "features": "array of 4-8 shape objects (see feature shape docs)"
+      "features": "array of 8-12 shape objects (see feature shape docs)"
     }
   },
   "weapon": {
@@ -107,20 +107,26 @@ const JSON_SCHEMA = `{
 const VISUAL_EXAMPLE = `
 Example: if the creature is "lion", a good visual would be:
 {
-  "base_shape": "rectangle", "width": 70, "height": 50,
+  "base_shape": "rectangle", "width": 70, "height": 55,
   "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
   "features": [
-    { "type": "circle", "label": "mane", "x": 20, "y": 5, "radius": 25, "color": "#B87A10" },
-    { "type": "circle", "label": "head", "x": 20, "y": 8, "radius": 16, "color": "#D4A030" },
-    { "type": "circle", "label": "eye_left", "x": 13, "y": 5, "radius": 3, "color": "#FFFFFF" },
-    { "type": "circle", "label": "eye_right", "x": 27, "y": 5, "radius": 3, "color": "#FFFFFF" },
-    { "type": "circle", "label": "pupil_left", "x": 14, "y": 5, "radius": 1.5, "color": "#1A1000" },
-    { "type": "circle", "label": "pupil_right", "x": 28, "y": 5, "radius": 1.5, "color": "#1A1000" },
-    { "type": "triangle", "label": "ear_left", "points": [[6,-4],[2,-14],[12,-10]], "color": "#B87A10" },
-    { "type": "triangle", "label": "ear_right", "points": [[34,-4],[38,-14],[28,-10]], "color": "#B87A10" }
+    { "type": "circle", "label": "mane", "x": 18, "y": 3, "radius": 26, "color": "#B87A10" },
+    { "type": "circle", "label": "head", "x": 18, "y": 6, "radius": 16, "color": "#D4A030" },
+    { "type": "circle", "label": "eye_left", "x": 11, "y": 3, "radius": 3, "color": "#FFFFFF" },
+    { "type": "circle", "label": "eye_right", "x": 25, "y": 3, "radius": 3, "color": "#FFFFFF" },
+    { "type": "circle", "label": "pupil_left", "x": 12, "y": 3, "radius": 1.5, "color": "#1A1000" },
+    { "type": "circle", "label": "pupil_right", "x": 26, "y": 3, "radius": 1.5, "color": "#1A1000" },
+    { "type": "triangle", "label": "ear_left", "points": [[4,-2],[0,-14],[10,-8]], "color": "#B87A10" },
+    { "type": "triangle", "label": "ear_right", "points": [[32,-2],[36,-14],[26,-8]], "color": "#B87A10" },
+    { "type": "circle", "label": "nose", "x": 18, "y": 12, "radius": 3, "color": "#3A2000" },
+    { "type": "arc", "label": "mouth", "x": 18, "y": 15, "radius": 5, "startAngle": 0, "endAngle": 3.14, "color": "#3A2000" },
+    { "type": "rectangle", "label": "front_leg_left", "x": 10, "y": 30, "width": 8, "height": 22, "color": "#C08A20" },
+    { "type": "rectangle", "label": "front_leg_right", "x": 46, "y": 30, "width": 8, "height": 22, "color": "#C08A20" },
+    { "type": "line", "label": "tail", "x1": 65, "y1": 20, "x2": 78, "y2": 8, "lineWidth": 3, "color": "#B87A10" },
+    { "type": "circle", "label": "tail_tuft", "x": 78, "y": 6, "radius": 5, "color": "#8B5E0A" }
   ]
 }
-Notice: features define recognizable body parts (mane, head, eyes, ears) positioned relative to the base shape.`;
+IMPORTANT: The creature visual MUST include these body parts: head, eyes (2 circles + 2 pupils), body/torso, and at least 2 legs. Also include distinguishing features for the creature (e.g. mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, tail if relevant). Position legs at the bottom of the base shape. The result should be an immediately recognizable silhouette of the named creature.`;
 
 function buildPrompt(words) {
   return `You are a creative game designer for an absurdist action game called "Determined".
@@ -142,7 +148,7 @@ Rules:
 - Make it fun, absurd, and creative. Lean into humor.
 - The creature's weakness should relate to the weapon's damage type when it makes sense.
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
-- Use 4-8 features per creature to build a recognizable shape. Each feature should represent a distinct body part with a descriptive label.
+- Use 8-12 features per creature to build a recognizable shape. Each feature should represent a distinct body part with a descriptive label. ALWAYS include: head, eyes (with pupils), body, and legs. Add creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
 - The environment item's visual is a small 20-30px pickup icon. Use 2-5 features to build a simple, recognizable symbol of "${words.environment}" (e.g. a lightning bolt, snowflake, flame, raindrop, tornado shape). Keep it compact.
 - The environment item's visual_effect.style controls the targeted animation when the item is activated. Choose the best match for "${words.environment}": "bolt" for lightning/electricity/energy, "flames" for fire/heat/lava/magma, "freeze" for ice/snow/cold/frost, "wind" for tornado/hurricane/gust/storm, "explosion" for earthquake/shockwave/meteor/bomb, "beam" for laser/light/solar/radiation, "rain" for rain/hail/acid/flood.
 - Position features relative to the base shape (0,0 is top-left, width/height is bottom-right).
@@ -297,7 +303,7 @@ async function callGroq(words) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 2000,
+      max_tokens: 2500,
     }),
   });
 
@@ -394,7 +400,7 @@ function sanitizeData(data) {
       o.visual.color_secondary = hexColor(o.visual.color_secondary, '#FF6666');
       o.visual.color_accent = hexColor(o.visual.color_accent, '#220000');
       if (Array.isArray(o.visual.features)) {
-        o.visual.features = o.visual.features.slice(0, 8).map(sanitizeFeature).filter(Boolean);
+        o.visual.features = o.visual.features.slice(0, 14).map(sanitizeFeature).filter(Boolean);
       } else {
         o.visual.features = [];
       }
@@ -485,15 +491,17 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { words } = req.body || {};
+  const { words, nocache } = req.body || {};
   if (!words?.creature || !words?.weapon || !words?.environment) {
     return res.status(400).json({ error: 'Missing required words (creature, weapon, environment)' });
   }
 
-  // Check cache first (free, no rate limit cost)
-  const cached = await getCached(words);
-  if (cached) {
-    return res.status(200).json(cached);
+  // Check cache first (free, no rate limit cost) — skip if nocache
+  if (!nocache) {
+    const cached = await getCached(words);
+    if (cached) {
+      return res.status(200).json(cached);
+    }
   }
 
   // Rate limit
