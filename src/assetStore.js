@@ -37,12 +37,12 @@ function loadAllSessions() {
 
 /**
  * Get a flat list of individual assets for the Assets screen.
- * Each entry has { word, type, entityData, timestamp }.
+ * Each entry has { word, type, entityData, words, timestamp }.
+ * Deduplicates by word+type, keeping the most recent version.
  */
 export function getAssetList() {
   const store = loadAllSessions();
-  const list = [];
-  const seen = new Set();
+  const map = new Map();
 
   for (const entry of store) {
     if (!entry.data) continue;
@@ -54,21 +54,18 @@ export function getAssetList() {
     ];
 
     for (const item of items) {
-      // Deduplicate by word+type
+      if (!item.entityData) continue;
+      // Later entries overwrite earlier ones (keeps most recent)
       const key = `${item.type}:${item.word}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      if (item.entityData) {
-        list.push({
-          word: item.word,
-          type: item.type,
-          entityData: item.entityData,
-          timestamp: entry.timestamp,
-        });
-      }
+      map.set(key, {
+        word: item.word,
+        type: item.type,
+        entityData: item.entityData,
+        words: entry.words,
+        timestamp: entry.timestamp,
+      });
     }
   }
 
-  return list;
+  return Array.from(map.values());
 }
