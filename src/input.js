@@ -16,6 +16,8 @@ const actions = {
   attack: false,
   item: false,
   reset: false,
+  moveX: 0,          // Analog movement -1..1 (left/right)
+  moveY: 0,          // Analog movement -1..1 (forward/backward)
 };
 
 // Camera input — accumulated pixel deltas each frame
@@ -45,6 +47,12 @@ function updateActionsFromKeys() {
   actions.attack = !!(keys['KeyJ'] || keys['KeyZ']);
   actions.item = !!(keys['KeyK'] || keys['KeyX']);
   actions.reset = !!keys['KeyR'];
+
+  // Keyboard → analog movement (binary -1/0/+1)
+  if (actions.left) actions.moveX = -1;
+  if (actions.right) actions.moveX = 1;
+  if (actions.forward) actions.moveY = -1;
+  if (actions.backward) actions.moveY = 1;
 }
 
 // Keyboard camera rotation (Q/E keys)
@@ -317,8 +325,11 @@ function onCameraEnd(e) {
 // ── Joystick → Actions ──
 
 function updateActionsFromTouch3D() {
-  // Joystick → movement actions
+  // Joystick → analog movement (proportional to tilt)
   if (joystickActive) {
+    actions.moveX = joystickX;  // -1..1, already deadzone-applied
+    actions.moveY = joystickY;  // -1..1, already deadzone-applied
+    // Also set boolean flags for code that checks them
     if (joystickX < -JOYSTICK_DEADZONE) actions.left = true;
     if (joystickX > JOYSTICK_DEADZONE) actions.right = true;
     if (joystickY < -JOYSTICK_DEADZONE) actions.forward = true;
@@ -407,6 +418,8 @@ export function pollInput(dt) {
   actions.attack = false;
   actions.item = false;
   actions.reset = false;
+  actions.moveX = 0;
+  actions.moveY = 0;
   updateActionsFromKeys();
 
   if (level2Active) {

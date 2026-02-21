@@ -109,50 +109,72 @@ export function updatePlayer3D(player, actions, dt, cameraYaw) {
 
   player.animFrame++;
 
-  // Movement input (local to camera)
-  let inputX = 0;
-  let inputZ = 0;
-  let moving = false;
+  // ── Movement (analog, dt-based, camera-relative) ──
+  const MOVE_SPEED = 8;       // max speed in units/sec
+  const ACCEL = 12;            // acceleration smoothing factor
+  const DECEL = 10;            // deceleration when no input
+  const GRAVITY_ACCEL = 20;    // gravity in units/sec²
+  const JUMP_VEL = 8;          // jump velocity in units/sec
 
-  if (actions.left) { inputX -= 1; moving = true; }
-  if (actions.right) { inputX += 1; moving = true; }
-  if (actions.forward) { inputZ -= 1; moving = true; }
-  if (actions.backward) { inputZ += 1; moving = true; }
+  // Read analog input (-1..1 from joystick, or -1/0/1 from keyboard)
+  let inputX = actions.moveX;
+  let inputZ = actions.moveY;
+  let inputMag = Math.sqrt(inputX * inputX + inputZ * inputZ);
+  let moving = inputMag > 0.01;
 
-  // Transform input to world-space using camera yaw
-  if (inputX !== 0 || inputZ !== 0) {
-    const len = Math.sqrt(inputX * inputX + inputZ * inputZ);
-    inputX /= len;
-    inputZ /= len;
+  // Clamp diagonal so it isn't faster
+  if (inputMag > 1) {
+    inputX /= inputMag;
+    inputZ /= inputMag;
+    inputMag = 1;
+  }
 
+  let worldMoveX = 0;
+  let worldMoveZ = 0;
+
+  if (moving) {
     // Rotate input by camera yaw so "forward" = away from camera
     const cos = Math.cos(cameraYaw || 0);
     const sin = Math.sin(cameraYaw || 0);
-    const moveX = inputX * cos + inputZ * sin;
-    const moveZ = -inputX * sin + inputZ * cos;
+    worldMoveX = inputX * cos + inputZ * sin;
+    worldMoveZ = -inputX * sin + inputZ * cos;
 
-    player.vx += moveX * L2_PLAYER_SPEED;
-    player.vz += moveZ * L2_PLAYER_SPEED;
+    // Target velocity proportional to joystick magnitude
+    const targetSpeed = inputMag * MOVE_SPEED;
+    const targetVx = worldMoveX * targetSpeed;
+    const targetVz = worldMoveZ * targetSpeed;
 
-    // Update facing direction (world-space)
-    player.facing.set(moveX, 0, moveZ).normalize();
+    // Smoothly accelerate toward target
+    const blend = Math.min(1, ACCEL * dt);
+    player.vx += (targetVx - player.vx) * blend;
+    player.vz += (targetVz - player.vz) * blend;
+
+    // Update facing direction
+    player.facing.set(worldMoveX, 0, worldMoveZ).normalize();
+  } else if (player.onGround) {
+    // Decelerate smoothly when no input
+    const decay = Math.max(0, 1 - DECEL * dt);
+    player.vx *= decay;
+    player.vz *= decay;
+    if (Math.abs(player.vx) < 0.01) player.vx = 0;
+    if (Math.abs(player.vz) < 0.01) player.vz = 0;
   }
 
-  // Jump (Space only in 3D — W/Up is forward movement)
+  // Jump
   if (actions.jump && player.onGround) {
-    player.vy = L2_PLAYER_JUMP_FORCE;
+    player.vy = JUMP_VEL;
     player.onGround = false;
     sfxJump();
   }
 
-  // Gravity
-  player.vy -= L2_GRAVITY;
+  // Gravity (dt-based)
+  player.vy -= GRAVITY_ACCEL * dt;
 
-  // Apply velocity
+  // Apply velocity (dt-based)
   const mesh = player.mesh;
-  mesh.position.x += player.vx;
-  mesh.position.y += player.vy;
-  mesh.position.z += player.vz;
+  mesh.position.x += player.vx * dt;
+  mesh.position.y += player.vy * dt;
+  mesh.position.z += player.vz * dt;
 
   // Ground collision
   if (mesh.position.y <= 0) {
@@ -167,28 +189,24 @@ export function updatePlayer3D(player, actions, dt, cameraYaw) {
     const angle = Math.atan2(mesh.position.z, mesh.position.x);
     mesh.position.x = Math.cos(angle) * (L2_ARENA_RADIUS - 1);
     mesh.position.z = Math.sin(angle) * (L2_ARENA_RADIUS - 1);
-    // Bounce velocity inward
+    // Kill outward velocity
     const nx = Math.cos(angle);
     const nz = Math.sin(angle);
     const dot = player.vx * nx + player.vz * nz;
     if (dot > 0) {
-      player.vx -= 1.5 * dot * nx;
-      player.vz -= 1.5 * dot * nz;
+      player.vx -= 1.2 * dot * nx;
+      player.vz -= 1.2 * dot * nz;
     }
   }
 
-  // Friction
-  if (player.onGround) {
-    player.vx *= L2_GROUND_FRICTION;
-    player.vz *= L2_GROUND_FRICTION;
-    if (Math.abs(player.vx) < 0.001) player.vx = 0;
-    if (Math.abs(player.vz) < 0.001) player.vz = 0;
-  }
-
-  // Rotate mesh to face movement direction
-  if (moving && (moveX !== 0 || moveZ !== 0)) {
-    const targetAngle = Math.atan2(moveX, moveZ);
-    mesh.rotation.y = targetAngle;
+  // Rotate mesh to face movement direction (smooth)
+  if (moving && (worldMoveX !== 0 || worldMoveZ !== 0)) {
+    const targetAngle = Math.atan2(worldMoveX, worldMoveZ);
+    // Smooth rotation
+    let angleDiff = targetAngle - mesh.rotation.y;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    mesh.rotation.y += angleDiff * Math.min(1, 10 * dt);
   }
 
   // Animate limbs
