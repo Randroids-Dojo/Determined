@@ -75,15 +75,24 @@ export function showWordEntry(onSubmit) {
       <div class="word-inputs">
         <label>
           <span class="word-label">Enter a creature</span>
-          <input type="text" id="word1" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Lion" autocomplete="off" />
+          <div class="word-input-row">
+            <input type="text" id="word1" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Lion" autocomplete="off" />
+            <button type="button" class="btn-random" data-category="creature" data-target="word1" title="Generate random word">?</button>
+          </div>
         </label>
         <label>
           <span class="word-label">Enter a weapon</span>
-          <input type="text" id="word2" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Sword" autocomplete="off" />
+          <div class="word-input-row">
+            <input type="text" id="word2" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Sword" autocomplete="off" />
+            <button type="button" class="btn-random" data-category="weapon" data-target="word2" title="Generate random word">?</button>
+          </div>
         </label>
         <label>
           <span class="word-label">Enter a weather or force of nature</span>
-          <input type="text" id="word3" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Lightning" autocomplete="off" />
+          <div class="word-input-row">
+            <input type="text" id="word3" maxlength="${WORD_MAX_LENGTH}" placeholder="e.g. Lightning" autocomplete="off" />
+            <button type="button" class="btn-random" data-category="environment" data-target="word3" title="Generate random word">?</button>
+          </div>
         </label>
       </div>
       <p id="word-error" class="error-text"></p>
@@ -98,6 +107,53 @@ export function showWordEntry(onSubmit) {
   ];
   const errorEl = document.getElementById('word-error');
   const submitBtn = document.getElementById('btn-submit-words');
+
+  // ── Random word buttons ──
+  let cachedWords = {};  // Cache unused words from batch API response
+  let fetching = false;
+
+  for (const btn of overlayEl.querySelectorAll('.btn-random')) {
+    btn.addEventListener('click', async () => {
+      const category = btn.dataset.category;
+      const input = document.getElementById(btn.dataset.target);
+
+      // Use cached word if available
+      if (cachedWords[category]) {
+        input.value = cachedWords[category];
+        delete cachedWords[category];
+        sfxMenuSelect();
+        return;
+      }
+
+      // Fetch a new batch
+      if (fetching) return;
+      fetching = true;
+      btn.classList.add('loading');
+
+      try {
+        const resp = await fetch('/api/random-words');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const data = await resp.json();
+
+        // Fill the clicked field, cache the rest
+        if (data[category]) {
+          input.value = data[category];
+        }
+        for (const key of ['creature', 'weapon', 'environment']) {
+          if (key !== category && data[key]) {
+            cachedWords[key] = data[key];
+          }
+        }
+        sfxMenuSelect();
+      } catch (err) {
+        errorEl.textContent = 'Could not generate word. Try again!';
+        console.warn('Random word fetch failed:', err);
+      } finally {
+        fetching = false;
+        btn.classList.remove('loading');
+      }
+    });
+  }
 
   submitBtn.addEventListener('click', () => {
     const words = inputs.map(inp => sanitizeWord(inp.value));
