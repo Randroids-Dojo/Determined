@@ -1,5 +1,6 @@
 /**
  * Game — main loop, state machine, and orchestration.
+ * Supports Level 1 (2D Canvas) and Level 2 (3D Three.js).
  */
 
 import {
@@ -7,8 +8,9 @@ import {
   FLAG_X, FLAG_HEIGHT,
   STATE_MENU, STATE_WORD_ENTRY, STATE_LOADING, STATE_PLAYING,
   STATE_VICTORY, STATE_LEADERBOARD,
+  STATE_LEVEL2_INTRO, STATE_LEVEL2_LOADING, STATE_LEVEL2_PLAYING, STATE_LEVEL2_VICTORY,
 } from './constants.js';
-import { initInput, pollInput, snapshotKeys } from './input.js';
+import { initInput, pollInput, snapshotKeys, showTouchL1Controls, hideAllTouchControls } from './input.js';
 import {
   drawBackground, drawGround, drawFlag,
   drawStickFigure, drawVisual, applyScreenShake,
@@ -27,7 +29,9 @@ import { sfxVictory, sfxItemPickup, resumeAudio } from './audio.js';
 import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
+  showLevel2Intro, showLevel2Loading, showLevel2Victory,
 } from './ui.js';
+import { startLevel2, cleanupLevel2 } from './level2/level2.js';
 
 // ── Canvas setup ──
 const canvas = document.getElementById('game-canvas');
@@ -47,6 +51,11 @@ let startTime = 0;
 let elapsedMs = 0;
 let lastFrame = 0;
 let resetActive = false; // edge-detect reset so it only fires once per press
+
+// ── Level 2 state ──
+let llmData = null;       // Store LLM data for Level 2 reuse
+let level1Deaths = 0;     // Deaths from Level 1 carry forward
+let level1Time = 0;       // Time from Level 1 carries forward
 
 // ── Fallback data (used if LLM fails) ──
 const FALLBACK_DATA = {
@@ -139,6 +148,8 @@ export function init() {
 
 function goToMenu() {
   state = STATE_MENU;
+  llmData = null;
+  hideAllTouchControls();
   showMainMenu(goToWordEntry, goToLeaderboard);
 }
 
@@ -161,9 +172,11 @@ async function onWordsSubmitted(submittedWords) {
 
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
+    llmData = data;
     startGame(data);
   } catch (err) {
     console.warn('LLM generation failed, using fallback:', err);
+    llmData = FALLBACK_DATA;
     startGame(FALLBACK_DATA);
   }
 }
@@ -171,6 +184,7 @@ async function onWordsSubmitted(submittedWords) {
 function startGame(data) {
   state = STATE_PLAYING;
   hideUI();
+  showTouchL1Controls();
 
   player = createPlayer();
   obstacle = createObstacle(data.obstacle);
@@ -219,30 +233,15 @@ function onVictory() {
   state = STATE_VICTORY;
   player.state = 'victory';
   sfxVictory();
+  hideAllTouchControls();
+
+  // Store Level 1 stats for Level 2
+  level1Deaths = deaths;
+  level1Time = elapsedMs;
 
   setTimeout(() => {
-    showVictoryScreen(deaths, elapsedMs, words, submitScore, goToWordEntry);
+    showVictoryScreen(deaths, elapsedMs, words, goToLevel2Intro, goToWordEntry);
   }, 1500);
-}
-
-async function submitScore(initials) {
-  try {
-    await fetch('/api/leaderboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initials,
-        deaths,
-        time: elapsedMs / 1000,
-        word_1: words.creature,
-        word_2: words.weapon,
-        word_3: words.environment,
-      }),
-    });
-  } catch (err) {
-    console.warn('Leaderboard submission failed:', err);
-  }
-  goToLeaderboard();
 }
 
 async function goToLeaderboard() {
@@ -254,7 +253,90 @@ async function goToLeaderboard() {
   } catch (err) {
     console.warn('Failed to fetch leaderboard:', err);
   }
-  showLeaderboard(entries, goToMenu);
+  showLeaderboard(entries, goToMenu, null);
+}
+
+// ── Level 2 transitions ──
+
+function goToLevel2Intro() {
+  state = STATE_LEVEL2_INTRO;
+  hideAllTouchControls();
+  showLevel2Intro(words, startLevel2Game);
+}
+
+async function startLevel2Game() {
+  state = STATE_LEVEL2_LOADING;
+  showLevel2Loading();
+
+  // Scale up the obstacle for Level 2 (harder version)
+  const l2Data = scaleDataForLevel2(llmData);
+
+  // Brief delay for the loading screen effect
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  state = STATE_LEVEL2_PLAYING;
+  hideUI();
+
+  startLevel2(l2Data, level1Deaths, level1Time, words, onLevel2Victory);
+}
+
+function onLevel2Victory(totalDeaths, totalTimeMs) {
+  state = STATE_LEVEL2_VICTORY;
+  cleanupLevel2();
+  hideAllTouchControls();
+
+  const onSubmitScore = async (initials) => {
+    try {
+      await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initials,
+          deaths: totalDeaths,
+          time: totalTimeMs / 1000,
+          word_1: words.creature,
+          word_2: words.weapon,
+          word_3: words.environment,
+        }),
+      });
+    } catch (err) {
+      console.warn('Leaderboard submission failed:', err);
+    }
+    goToLeaderboard();
+  };
+
+  showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore, goToMenu);
+}
+
+/**
+ * Scale LLM data to make Level 2 harder.
+ * Same creature/weapon/environment but with buffed stats.
+ */
+function scaleDataForLevel2(data) {
+  const scaled = JSON.parse(JSON.stringify(data)); // Deep clone
+
+  // Buff the obstacle
+  if (scaled.obstacle) {
+    scaled.obstacle.health = Math.ceil((scaled.obstacle.health || 100) * 1.8);
+    scaled.obstacle.attack_damage = Math.ceil((scaled.obstacle.attack_damage || 15) * 1.5);
+    scaled.obstacle.movement_speed = Math.min(5, (scaled.obstacle.movement_speed || 2) * 1.3);
+    scaled.obstacle.aggro_range = Math.min(200, (scaled.obstacle.aggro_range || 120) * 1.3);
+    scaled.obstacle.attack_cooldown = Math.max(0.5, (scaled.obstacle.attack_cooldown || 1.5) * 0.7);
+    scaled.obstacle.name = scaled.obstacle.name + ' (Enraged)';
+    scaled.obstacle.description = 'It returns, angrier than before. In three dimensions.';
+  }
+
+  // Slightly buff the weapon to keep it fair
+  if (scaled.weapon) {
+    scaled.weapon.damage = Math.ceil((scaled.weapon.damage || 20) * 1.2);
+  }
+
+  // Buff the environment item
+  if (scaled.environment_item) {
+    scaled.environment_item.damage = Math.ceil((scaled.environment_item.damage || 40) * 1.3);
+  }
+
+  return scaled;
 }
 
 // ── Main game loop ──
@@ -267,6 +349,7 @@ function gameLoop(timestamp) {
     update(dt);
     render();
   }
+  // Level 2 has its own internal loop via requestAnimationFrame
 
   requestAnimationFrame(gameLoop);
 }
