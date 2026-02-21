@@ -57,7 +57,7 @@ export function createWeapon3D(scene, weaponData) {
     damage: data.damage || 20,
     damageType: data.damage_type || 'blunt',
     attackPattern: data.attack_pattern || 'melee',
-    range: (data.range || 55) * 0.06,
+    range: Math.max((data.range || 55) * 0.08, 3.0),  // Min 3 units range
     cooldown: (data.cooldown || 0.5) * 1000,
     specialEffect: data.special_effect || 'none',
     specialEffectDuration: (data.special_effect_duration || 0) * 1000,
@@ -236,11 +236,12 @@ function fireWeaponProjectile(weapon, position, facing, scene) {
 
   projectileGroup.add(projMesh);
 
+  const projSpeed = 15;  // units per second
   weaponProjectiles.push({
     mesh: projMesh,
-    vx: facing.x * 0.3,
+    vx: facing.x * projSpeed,
     vy: 0,
-    vz: facing.z * 0.3,
+    vz: facing.z * projSpeed,
     damage: weapon.damage,
     life: 2000,
     weapon,
@@ -255,9 +256,9 @@ export function updateWeaponProjectiles3D(weapon, obstacle, dt) {
 
   for (let i = weaponProjectiles.length - 1; i >= 0; i--) {
     const p = weaponProjectiles[i];
-    p.mesh.position.x += p.vx;
-    p.mesh.position.y += p.vy;
-    p.mesh.position.z += p.vz;
+    p.mesh.position.x += p.vx * dt;
+    p.mesh.position.y += p.vy * dt;
+    p.mesh.position.z += p.vz * dt;
     p.life -= dt * 1000;
 
     // Check hit against obstacle
