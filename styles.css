@@ -30,13 +30,31 @@ body {
   aspect-ratio: 800 / 450;
 }
 
-#game-canvas {
+#game-canvas,
+#game-canvas-3d {
   width: 100%;
   height: 100%;
   display: block;
   border: 2px solid #333;
   border-radius: 4px;
   image-rendering: pixelated;
+}
+
+#game-canvas-3d {
+  position: absolute;
+  top: 0;
+  left: 0;
+  image-rendering: auto;
+}
+
+#hud-canvas-3d {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
 }
 
 /* ── UI overlay ── */
@@ -161,6 +179,48 @@ body {
   border-radius: 4px;
   color: #fff;
   text-align: center;
+}
+
+.word-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-random {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-family: inherit;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #FFD700;
+  background: #333;
+  border: 2px solid #555;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.btn-random:hover {
+  background: #444;
+  border-color: #FFD700;
+}
+
+.btn-random:active {
+  background: #555;
+}
+
+.btn-random.loading {
+  pointer-events: none;
+  opacity: 0.5;
+  animation: pulse-random 0.8s ease-in-out infinite;
+}
+
+@keyframes pulse-random {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
 }
 
 .word-inputs input:focus {
@@ -370,6 +430,11 @@ body {
   .word-inputs input {
     width: 220px;
   }
+
+  .btn-random {
+    width: 40px;
+    height: 40px;
+  }
 }
 
 /* ── Portrait mobile: large touch targets at screen bottom ── */
@@ -429,5 +494,449 @@ body {
 
   .leaderboard-table-wrapper {
     max-height: 180px;
+  }
+}
+
+/* ── Level 2 Button ── */
+.btn-level2 {
+  background: linear-gradient(135deg, #6644cc, #aa44ff);
+  color: #fff;
+  border-color: #aa66ff;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(170, 102, 255, 0.5);
+}
+
+.btn-level2:hover {
+  background: linear-gradient(135deg, #7755dd, #bb55ff);
+  transform: scale(1.03);
+  box-shadow: 0 0 20px rgba(170, 102, 255, 0.4);
+}
+
+/* ── Leaderboard buttons ── */
+.leaderboard-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ── Level 2 Intro Screen ── */
+.level2-intro-screen {
+  text-align: center;
+  padding: 20px;
+  max-width: 90%;
+  margin: auto;
+}
+
+.level2-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #6644cc, #aa44ff);
+  color: #fff;
+  padding: 4px 16px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  margin-bottom: 12px;
+  text-shadow: 0 0 6px rgba(170, 102, 255, 0.6);
+}
+
+.victory-badge {
+  background: linear-gradient(135deg, #cc8800, #ffd700);
+  color: #1a1a2e;
+  text-shadow: none;
+}
+
+.level2-intro-screen h2 {
+  font-size: 1.5rem;
+  color: #aa88ff;
+  margin-bottom: 8px;
+}
+
+.level2-subtitle {
+  font-size: 0.9rem;
+  color: #aaa;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.level2-info {
+  margin-bottom: 20px;
+}
+
+.level2-info p {
+  font-size: 0.85rem;
+  color: #ccc;
+  margin-bottom: 4px;
+}
+
+.level2-controls-info {
+  background: rgba(100, 68, 204, 0.15);
+  border: 1px solid rgba(170, 102, 255, 0.3);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+
+.controls-header {
+  font-size: 0.75rem;
+  color: #aa88ff;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+
+.controls-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 12px;
+  text-align: left;
+  font-size: 0.8rem;
+  color: #ccc;
+}
+
+.controls-grid .key {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  color: #FFD700;
+  text-align: center;
+}
+
+.level2-objective {
+  font-size: 0.85rem;
+  color: #FFD700;
+  margin-bottom: 16px;
+}
+
+/* ── Level 2 Loading ── */
+.level2-loading {
+  /* Additional styling for Level 2 loading */
+}
+
+.level2-spinner {
+  border-top-color: #aa66ff !important;
+}
+
+.level2-loading-badge {
+  font-size: 0.75rem;
+  color: #aa88ff;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+}
+
+/* ── Level 2 Victory Screen ── */
+.level2-victory-screen {
+  text-align: center;
+  padding: 24px;
+  max-width: 90%;
+  margin: auto;
+}
+
+.level2-victory-screen h2 {
+  font-size: 1.6rem;
+  color: #FFD700;
+  margin-bottom: 8px;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.victory-subtitle {
+  font-size: 0.9rem;
+  color: #aaa;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.final-stats {
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  border-radius: 6px;
+  padding: 16px;
+  margin-bottom: 16px;
+  display: inline-block;
+  min-width: 250px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-label {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.stat-value {
+  color: #FFD700;
+  font-size: 0.85rem;
+  font-weight: bold;
+}
+
+.victory-flavor {
+  font-size: 0.85rem;
+  color: #888;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+/* ══════════════════════════════════════════════
+   Level 2 Touch Controls — Dual-Stick + Action Buttons
+   Left joystick = move, Right swipe = camera, Buttons = actions
+   ══════════════════════════════════════════════ */
+
+#touch-controls-3d {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ── Movement Joystick Zone (left ~40% of screen) ── */
+.touch3d-joystick-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.joystick-base {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(100, 68, 204, 0.15) 0%, rgba(100, 68, 204, 0.05) 70%, transparent 100%);
+  border: 2px solid rgba(170, 102, 255, 0.3);
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  /* Default position — bottom-left area */
+  left: 80px;
+  top: calc(100% - 80px);
+}
+
+.joystick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(170, 102, 255, 0.6), rgba(100, 68, 204, 0.4));
+  border: 2px solid rgba(170, 102, 255, 0.7);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(170, 102, 255, 0.3);
+}
+
+/* ── Camera Joystick Zone (right ~60% of screen) ── */
+.touch3d-camera-zone {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 60%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.cam-joystick-base {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(68, 170, 255, 0.12) 0%, rgba(68, 170, 255, 0.04) 70%, transparent 100%);
+  border: 2px solid rgba(68, 170, 255, 0.25);
+  transform: translate(-50%, -50%);
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  /* Default position — bottom-right area */
+  right: 80px;
+  left: auto;
+  top: calc(100% - 80px);
+}
+
+.cam-joystick-thumb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(68, 170, 255, 0.5), rgba(30, 100, 180, 0.35));
+  border: 2px solid rgba(68, 170, 255, 0.6);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 10px rgba(68, 170, 255, 0.25);
+}
+
+/* ── 3D Action Buttons (float over camera zone, bottom-right) ── */
+.touch3d-actions {
+  position: absolute;
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: auto auto;
+  gap: 8px;
+  align-items: center;
+  justify-items: center;
+  pointer-events: auto;
+  z-index: 25; /* Above camera zone */
+}
+
+.touch3d-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  touch-action: none;
+}
+
+.touch3d-btn:active {
+  background: rgba(170, 102, 255, 0.4);
+  border-color: #aa66ff;
+}
+
+/* Attack button — bigger and highlighted */
+.touch3d-attack {
+  width: 68px;
+  height: 68px;
+  font-size: 1.8rem;
+  border-color: rgba(255, 68, 68, 0.5);
+  background: rgba(180, 30, 30, 0.4);
+}
+
+.touch3d-attack:active {
+  background: rgba(255, 68, 68, 0.5);
+  border-color: #ff4444;
+}
+
+/* Jump button — medium with accent */
+.touch3d-jump {
+  border-color: rgba(68, 221, 255, 0.4);
+  background: rgba(20, 80, 120, 0.4);
+}
+
+.touch3d-jump:active {
+  background: rgba(68, 221, 255, 0.4);
+  border-color: #44ddff;
+}
+
+/* Item button */
+.touch3d-item {
+  width: 48px;
+  height: 48px;
+  font-size: 1.2rem;
+  border-color: rgba(255, 215, 0, 0.4);
+  background: rgba(120, 100, 0, 0.3);
+}
+
+.touch3d-item:active {
+  background: rgba(255, 215, 0, 0.4);
+  border-color: #FFD700;
+}
+
+/* Reset button — small and subtle */
+.touch3d-reset {
+  width: 40px;
+  height: 40px;
+  font-size: 1rem;
+  opacity: 0.6;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.touch3d-reset:active {
+  opacity: 1;
+  background: rgba(255, 100, 100, 0.3);
+}
+
+/* ── Portrait mobile: adjust 3D controls ── */
+@media (max-width: 600px) and (orientation: portrait) {
+  .touch3d-attack {
+    width: 72px;
+    height: 72px;
+    font-size: 2rem;
+  }
+
+  .touch3d-jump {
+    width: 60px;
+    height: 60px;
+    font-size: 1.6rem;
+  }
+
+  .joystick-base,
+  .cam-joystick-base {
+    width: 120px;
+    height: 120px;
+  }
+
+  .joystick-thumb,
+  .cam-joystick-thumb {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+/* ── Landscape mobile: tighter layout ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .touch3d-actions {
+    gap: 6px;
+  }
+
+  .touch3d-attack {
+    width: 56px;
+    height: 56px;
+    font-size: 1.5rem;
+  }
+
+  .touch3d-jump {
+    width: 48px;
+    height: 48px;
+  }
+
+  .touch3d-item {
+    width: 42px;
+    height: 42px;
+  }
+
+  .touch3d-reset {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+
+  .joystick-base,
+  .cam-joystick-base {
+    width: 90px;
+    height: 90px;
+  }
+
+  .joystick-thumb,
+  .cam-joystick-thumb {
+    width: 38px;
+    height: 38px;
   }
 }
