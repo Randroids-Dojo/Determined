@@ -240,28 +240,8 @@ function onVictory() {
   level1Time = elapsedMs;
 
   setTimeout(() => {
-    showVictoryScreen(deaths, elapsedMs, words, submitScore, goToWordEntry);
+    showVictoryScreen(deaths, elapsedMs, words, goToLevel2Intro, goToWordEntry);
   }, 1500);
-}
-
-async function submitScore(initials) {
-  try {
-    await fetch('/api/leaderboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        initials,
-        deaths,
-        time: elapsedMs / 1000,
-        word_1: words.creature,
-        word_2: words.weapon,
-        word_3: words.environment,
-      }),
-    });
-  } catch (err) {
-    console.warn('Leaderboard submission failed:', err);
-  }
-  goToLeaderboard();
 }
 
 async function goToLeaderboard() {
@@ -273,9 +253,7 @@ async function goToLeaderboard() {
   } catch (err) {
     console.warn('Failed to fetch leaderboard:', err);
   }
-  // Pass Level 2 transition callback (only available if we have LLM data from a game)
-  const onContinue = llmData ? goToLevel2Intro : null;
-  showLeaderboard(entries, goToMenu, onContinue);
+  showLeaderboard(entries, goToMenu, null);
 }
 
 // ── Level 2 transitions ──
@@ -307,7 +285,27 @@ function onLevel2Victory(totalDeaths, totalTimeMs) {
   cleanupLevel2();
   hideAllTouchControls();
 
-  showLevel2Victory(totalDeaths, totalTimeMs, words, goToMenu);
+  const onSubmitScore = async (initials) => {
+    try {
+      await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initials,
+          deaths: totalDeaths,
+          time: totalTimeMs / 1000,
+          word_1: words.creature,
+          word_2: words.weapon,
+          word_3: words.environment,
+        }),
+      });
+    } catch (err) {
+      console.warn('Leaderboard submission failed:', err);
+    }
+    goToLeaderboard();
+  };
+
+  showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore, goToMenu);
 }
 
 /**
