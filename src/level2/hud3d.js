@@ -4,6 +4,7 @@
  */
 
 import { CANVAS_WIDTH, CANVAS_HEIGHT, L2_PLAYER_HP } from '../constants.js';
+import { getFlagPosition } from './arena.js';
 
 const HUD_Y = 8;
 const HUD_H = 36;
@@ -106,6 +107,29 @@ export function drawHUD3D(ctx, player, weapon, envItem, obstacle, deaths, elapse
 
     ctx.textAlign = 'left';
     ctx.font = '12px monospace';
+  }
+
+  // ── Flag objective indicator ──
+  if (!player.dead && player.state !== 'victory') {
+    const flagPos = getFlagPosition();
+    if (flagPos) {
+      const dx = player.mesh.position.x - flagPos.x;
+      const dz = player.mesh.position.z - flagPos.z;
+      const dy = player.mesh.position.y - flagPos.y;
+      const dist = Math.sqrt(dx * dx + dz * dz + dy * dy);
+      const objX = CANVAS_WIDTH / 2;
+      const objY = CANVAS_HEIGHT - 80;
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ff4444';
+      ctx.font = 'bold 11px monospace';
+      if (dist < 5) {
+        ctx.fillText('🚩 REACH THE FLAG!', objX, objY);
+      } else {
+        ctx.fillStyle = '#ff8866';
+        ctx.fillText(`🚩 Flag: ${Math.round(dist)}m away`, objX, objY);
+      }
+      ctx.textAlign = 'left';
+    }
   }
 
   // ── Death overlay ──

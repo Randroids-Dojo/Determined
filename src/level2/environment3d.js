@@ -248,11 +248,12 @@ function spawnEffectParticles(envItem, targetPos, scene) {
 }
 
 function updateEffectParticles(envItem, dt) {
+  const dtScale = dt * 60; // Normalize to 60fps baseline
   for (let i = envItem.particles.length - 1; i >= 0; i--) {
     const p = envItem.particles[i];
-    p.mesh.position.x += p.vx;
-    p.mesh.position.y += p.vy;
-    p.mesh.position.z += p.vz;
+    p.mesh.position.x += p.vx * dtScale;
+    p.mesh.position.y += p.vy * dtScale;
+    p.mesh.position.z += p.vz * dtScale;
     p.life -= p.decay * dt;
     p.mesh.material.opacity = Math.max(0, p.life);
 

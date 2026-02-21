@@ -26,23 +26,31 @@ export function createScene(canvas3d) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.2;
+  renderer.toneMappingExposure = 1.4;
 
   // Scene
   scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x1a1a2e, 0.015);
+  scene.background = new THREE.Color(0x1a1a3a);
+  scene.fog = new THREE.FogExp2(0x2a2a4e, 0.008); // Lighter fog, lower density
 
   // Camera
   camera = new THREE.PerspectiveCamera(60, CANVAS_WIDTH / CANVAS_HEIGHT, 0.1, 200);
   camera.position.set(0, L2_CAMERA_HEIGHT, L2_CAMERA_DISTANCE);
   camera.lookAt(0, 1, 0);
 
-  // Lights
-  const ambientLight = new THREE.AmbientLight(0x334466, 0.6);
+  // ── Lights (brighter for visibility) ──
+
+  // Hemisphere light for natural fill
+  const hemiLight = new THREE.HemisphereLight(0xaabbdd, 0x444466, 0.8);
+  scene.add(hemiLight);
+
+  // Ambient light
+  const ambientLight = new THREE.AmbientLight(0x667799, 0.5);
   scene.add(ambientLight);
 
-  const dirLight = new THREE.DirectionalLight(0xffeedd, 1.2);
-  dirLight.position.set(10, 20, 10);
+  // Main directional (sun)
+  const dirLight = new THREE.DirectionalLight(0xffeedd, 1.4);
+  dirLight.position.set(10, 25, 15);
   dirLight.castShadow = true;
   dirLight.shadow.mapSize.width = 1024;
   dirLight.shadow.mapSize.height = 1024;
@@ -54,14 +62,14 @@ export function createScene(canvas3d) {
   dirLight.shadow.camera.bottom = -35;
   scene.add(dirLight);
 
-  // Rim light for dramatic effect
-  const rimLight = new THREE.DirectionalLight(0x4488ff, 0.4);
-  rimLight.position.set(-10, 5, -10);
+  // Rim light for dramatic edge
+  const rimLight = new THREE.DirectionalLight(0x6699ff, 0.5);
+  rimLight.position.set(-10, 8, -10);
   scene.add(rimLight);
 
   // Point light for arena glow
-  const arenaGlow = new THREE.PointLight(0xffd700, 0.5, 50);
-  arenaGlow.position.set(0, 3, 0);
+  const arenaGlow = new THREE.PointLight(0xffd700, 0.6, 50);
+  arenaGlow.position.set(0, 5, 0);
   scene.add(arenaGlow);
 
   // Clock
@@ -76,8 +84,6 @@ export function createScene(canvas3d) {
 
 /**
  * Apply camera input (from touch swipe or mouse drag).
- * @param {number} dx — horizontal pixel delta (positive = swipe right = rotate right)
- * @param {number} dy — vertical pixel delta (positive = swipe down = look up)
  */
 export function applyCameraInput(dx, dy) {
   cameraYaw -= dx * CAMERA_SENSITIVITY;
@@ -103,7 +109,6 @@ export function getCameraYaw() {
  * Update the camera to orbit around and follow the player.
  */
 export function updateCamera(cam, targetPos, dt) {
-  // Spherical offset from player
   const dist = L2_CAMERA_DISTANCE;
   const height = dist * Math.sin(cameraPitch);
   const horizontalDist = dist * Math.cos(cameraPitch);
@@ -112,10 +117,8 @@ export function updateCamera(cam, targetPos, dt) {
   const idealY = targetPos.y + height;
   const idealZ = targetPos.z + Math.cos(cameraYaw) * horizontalDist;
 
-  // Smooth follow
   cam.position.lerp(new THREE.Vector3(idealX, idealY, idealZ), 5.0 * dt);
 
-  // Look at a point slightly above the player
   const lookTarget = new THREE.Vector3(targetPos.x, targetPos.y + 1.0, targetPos.z);
   cam.lookAt(lookTarget);
 }
