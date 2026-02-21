@@ -153,7 +153,7 @@ export function hideUI() {
 
 // ── Victory Screen ──
 
-export function showVictoryScreen(deaths, elapsedMs, words, onSubmitScore, onPlayAgain) {
+export function showVictoryScreen(deaths, elapsedMs, words, onContinue, onPlayAgain) {
   clearOverlay();
   showOverlay();
   const secs = Math.floor(elapsedMs / 1000);
@@ -162,36 +162,27 @@ export function showVictoryScreen(deaths, elapsedMs, words, onSubmitScore, onPla
 
   overlayEl.innerHTML = `
     <div class="victory-screen">
-      <h2>VICTORY!</h2>
+      <h2>LEVEL 1 COMPLETE!</h2>
       <p class="victory-stats">
         Deaths: <strong>${deaths}</strong> &nbsp;|&nbsp;
         Time: <strong>${mins}:${String(s).padStart(2, '0')}</strong>
       </p>
       <p class="victory-words">
-        ${words.creature} vs ${words.weapon} + ${words.environment}
+        ${escapeHtml(words.creature)} vs ${escapeHtml(words.weapon)} + ${escapeHtml(words.environment)}
       </p>
-      <div class="initials-entry">
-        <label>Enter your initials:
-          <input type="text" id="initials" maxlength="3" placeholder="AAA" autocomplete="off" />
-        </label>
-        <button id="btn-submit-score" class="btn btn-primary">SUBMIT</button>
-      </div>
+      <button id="btn-continue-l2" class="btn btn-level2">CONTINUE TO LEVEL 2</button>
       <button id="btn-play-again" class="btn btn-secondary">PLAY AGAIN</button>
     </div>
   `;
 
-  const initialsInput = document.getElementById('initials');
-  document.getElementById('btn-submit-score').addEventListener('click', () => {
-    const initials = initialsInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
-    if (initials.length < 1) return;
+  document.getElementById('btn-continue-l2').addEventListener('click', () => {
     sfxMenuSelect();
-    onSubmitScore(initials);
+    onContinue();
   });
   document.getElementById('btn-play-again').addEventListener('click', () => {
     sfxMenuSelect();
     onPlayAgain();
   });
-  setTimeout(() => initialsInput.focus(), 100);
 }
 
 // ── Leaderboard ──
@@ -282,7 +273,7 @@ export function showLevel2Intro(words, onStart) {
           <span class="key">Right</span> <span>Swipe to look around</span>
         </div>
       </div>
-      <p class="level2-objective">Defeat the creature to win.</p>
+      <p class="level2-objective">Reach the flag on the elevated platform to win.</p>
       <button id="btn-start-level2" class="btn btn-level2">ENTER THE ARENA</button>
     </div>
   `;
@@ -326,7 +317,7 @@ export function showLevel2Loading() {
 
 // ── Level 2 Victory Screen ──
 
-export function showLevel2Victory(totalDeaths, totalTimeMs, words, onBack) {
+export function showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore, onBack) {
   clearOverlay();
   showOverlay();
   const secs = Math.floor(totalTimeMs / 1000);
@@ -353,13 +344,28 @@ export function showLevel2Victory(totalDeaths, totalTimeMs, words, onBack) {
         </div>
       </div>
       <p class="victory-flavor">"Your words shaped reality. Reality fought back. You won anyway."</p>
-      <button id="btn-final-back" class="btn btn-primary">BACK TO MENU</button>
+      <div class="initials-entry">
+        <label>Enter your initials:
+          <input type="text" id="initials" maxlength="3" placeholder="AAA" autocomplete="off" />
+        </label>
+        <button id="btn-submit-score" class="btn btn-primary">SUBMIT SCORE</button>
+      </div>
+      <button id="btn-final-back" class="btn btn-secondary">BACK TO MENU</button>
     </div>
   `;
+
+  const initialsInput = document.getElementById('initials');
+  document.getElementById('btn-submit-score').addEventListener('click', () => {
+    const initials = initialsInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    if (initials.length < 1) return;
+    sfxMenuSelect();
+    onSubmitScore(initials);
+  });
   document.getElementById('btn-final-back').addEventListener('click', () => {
     sfxMenuSelect();
     onBack();
   });
+  setTimeout(() => initialsInput.focus(), 100);
 }
 
 function escapeHtml(str) {
