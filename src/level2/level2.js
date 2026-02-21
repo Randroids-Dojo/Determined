@@ -10,7 +10,7 @@ import {
   getScene, getCamera, getClock,
   applyCameraInput, getCameraYaw, resetCameraOrbit,
 } from './scene.js';
-import { createArena, updateArena, disposeArena } from './arena.js';
+import { createArena, updateArena, disposeArena, getFlagPosition } from './arena.js';
 import { createPlayer3D, updatePlayer3D, damagePlayer3D, tryAttack3D, resetPlayer3D, disposePlayer3D } from './player3d.js';
 import {
   createObstacle3D, updateObstacle3D, damageObstacle3D, stunObstacle3D,
@@ -223,9 +223,16 @@ function update(dt, elapsed) {
   // Update arena visuals
   updateArena(dt, elapsed);
 
-  // Victory check — obstacle defeated
-  if (obstacle && obstacle.dead && obstacle.deathTimer >= obstacle.deathDuration) {
-    handleVictory();
+  // Victory check — player reached the flag on the elevated platform
+  const flagPos = getFlagPosition();
+  if (flagPos) {
+    const fx = player.mesh.position.x - flagPos.x;
+    const fz = player.mesh.position.z - flagPos.z;
+    const fy = player.mesh.position.y - flagPos.y;
+    const flagDist = Math.sqrt(fx * fx + fz * fz + fy * fy);
+    if (flagDist < 2.5) {
+      handleVictory();
+    }
   }
 
   // Update camera

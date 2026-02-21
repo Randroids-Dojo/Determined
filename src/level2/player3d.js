@@ -9,6 +9,7 @@ import {
   L2_PLAYER_HP, L2_PLAYER_HEIGHT, L2_PLAYER_RADIUS,
   L2_ARENA_RADIUS, L2_GROUND_FRICTION,
 } from '../constants.js';
+import { getGroundHeight } from './arena.js';
 import { sfxJump, sfxAttack, sfxHitTake, sfxDeath } from '../audio.js';
 
 /**
@@ -18,10 +19,10 @@ import { sfxJump, sfxAttack, sfxHitTake, sfxDeath } from '../audio.js';
 export function createPlayer3D(scene) {
   const group = new THREE.Group();
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5, metalness: 0.3 });
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.4, metalness: 0.3 });
   const glowMat = new THREE.MeshStandardMaterial({
-    color: 0x222222, emissive: 0x222222, emissiveIntensity: 0.2,
-    roughness: 0.5, metalness: 0.3,
+    color: 0x88aacc, emissive: 0x4488aa, emissiveIntensity: 0.4,
+    roughness: 0.4, metalness: 0.3,
   });
 
   // Head
@@ -170,15 +171,35 @@ export function updatePlayer3D(player, actions, dt, cameraYaw) {
   // Gravity (dt-based)
   player.vy -= GRAVITY_ACCEL * dt;
 
-  // Apply velocity (dt-based)
+  // Apply velocity (dt-based) with platform wall collision
   const mesh = player.mesh;
-  mesh.position.x += player.vx * dt;
-  mesh.position.y += player.vy * dt;
-  mesh.position.z += player.vz * dt;
+  const maxStep = 0.8; // Max height player can step up per frame
+  const curGround = getGroundHeight(mesh.position.x, mesh.position.z);
 
-  // Ground collision
-  if (mesh.position.y <= 0) {
-    mesh.position.y = 0;
+  // Check X movement
+  const newX = mesh.position.x + player.vx * dt;
+  const gAtNewX = getGroundHeight(newX, mesh.position.z);
+  if (gAtNewX > curGround + maxStep && gAtNewX > mesh.position.y + maxStep) {
+    player.vx = 0; // Wall — block X
+  } else {
+    mesh.position.x = newX;
+  }
+
+  // Check Z movement
+  const newZ = mesh.position.z + player.vz * dt;
+  const gAtNewZ = getGroundHeight(mesh.position.x, newZ);
+  if (gAtNewZ > curGround + maxStep && gAtNewZ > mesh.position.y + maxStep) {
+    player.vz = 0; // Wall — block Z
+  } else {
+    mesh.position.z = newZ;
+  }
+
+  mesh.position.y += player.vy * dt;
+
+  // Ground collision (respects platform/ramp height)
+  const groundY = getGroundHeight(mesh.position.x, mesh.position.z);
+  if (mesh.position.y <= groundY) {
+    mesh.position.y = groundY;
     player.vy = 0;
     player.onGround = true;
   }
@@ -293,7 +314,7 @@ function updateHitFlash(player) {
     player.mesh.visible = visible;
   } else {
     player.mesh.visible = true;
-    mats.forEach(m => { m.color.setHex(0x222222); m.emissive.setHex(0x222222); m.emissiveIntensity = 0.2; });
+    mats.forEach(m => { m.color.setHex(0x556677); m.emissive.setHex(0x4488aa); m.emissiveIntensity = 0.3; });
   }
 }
 
