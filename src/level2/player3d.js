@@ -33,9 +33,9 @@ export function createPlayer3D(scene) {
   group.add(head);
 
   // Body (cylinder)
-  const bodyGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.7, 8);
+  const bodyGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 8);
   const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = L2_PLAYER_HEIGHT - 0.57;
+  body.position.y = L2_PLAYER_HEIGHT - 0.7;   // center at 1.3, bottom at 0.9
   body.castShadow = true;
   group.add(body);
 
@@ -55,15 +55,15 @@ export function createPlayer3D(scene) {
   group.add(rightArm);
 
   // Legs
-  const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.6, 6);
+  const legGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.9, 6);
 
   const leftLeg = new THREE.Mesh(legGeo, bodyMat);
-  leftLeg.position.set(-0.1, 0.3, 0);
+  leftLeg.position.set(-0.1, 0.45, 0);   // center at 0.45, top at 0.9 = body bottom
   leftLeg.castShadow = true;
   group.add(leftLeg);
 
   const rightLeg = new THREE.Mesh(legGeo, bodyMat);
-  rightLeg.position.set(0.1, 0.3, 0);
+  rightLeg.position.set(0.1, 0.45, 0);
   rightLeg.castShadow = true;
   group.add(rightLeg);
 
