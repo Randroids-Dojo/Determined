@@ -48,9 +48,9 @@ export function showMainMenu(onPlay, onLeaderboard, onAssets) {
       <h1 class="game-title">DETERMINED</h1>
       <p class="tagline">"Your words. Your chaos. Your problem."</p>
       <div class="menu-buttons">
-        <button id="btn-assets" class="btn btn-assets">ASSETS</button>
         <button id="btn-play" class="btn btn-primary">PLAY</button>
         <button id="btn-leaderboard" class="btn btn-secondary">LEADERBOARD</button>
+        <button id="btn-assets" class="btn btn-assets">ASSETS</button>
       </div>
     </div>
   `;
