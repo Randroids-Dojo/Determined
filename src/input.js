@@ -104,6 +104,7 @@ function updateActionsFromTouch() {
 
 // Movement joystick (left side)
 let touch3dBtns = {};
+let touch3dJustPressed = {};  // Latched presses — survives until consumed
 let joystickActive = false;
 let joystickX = 0; // -1 to 1
 let joystickY = 0; // -1 to 1
@@ -162,6 +163,7 @@ function createTouch3DControls() {
       e.preventDefault();
       e.stopPropagation();
       touch3dBtns[action] = true;
+      touch3dJustPressed[action] = true;  // Latch — survives until next pollInput
     }, { passive: false });
     btn.addEventListener('touchend', (e) => {
       e.preventDefault();
@@ -336,11 +338,13 @@ function updateActionsFromTouch3D() {
     if (joystickY > JOYSTICK_DEADZONE) actions.backward = true;
   }
 
-  // 3D buttons → action flags
-  if (touch3dBtns.attack) actions.attack = true;
-  if (touch3dBtns.jump) actions.jump = true;
-  if (touch3dBtns.item) actions.item = true;
-  if (touch3dBtns.reset) actions.reset = true;
+  // 3D buttons → action flags (check both held and latched press)
+  if (touch3dBtns.attack || touch3dJustPressed.attack) actions.attack = true;
+  if (touch3dBtns.jump || touch3dJustPressed.jump) actions.jump = true;
+  if (touch3dBtns.item || touch3dJustPressed.item) actions.item = true;
+  if (touch3dBtns.reset || touch3dJustPressed.reset) actions.reset = true;
+  // Clear latched presses after consuming
+  touch3dJustPressed = {};
 }
 
 // ── Level switching ──

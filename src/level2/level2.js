@@ -145,6 +145,16 @@ function update(dt, elapsed) {
   // Attack
   if (actions.attack && weapon) {
     if (tryAttack3D(player, weapon.cooldown)) {
+      // Auto-face toward obstacle when attacking
+      if (obstacle && !obstacle.dead) {
+        const dx = obstacle.mesh.position.x - player.mesh.position.x;
+        const dz = obstacle.mesh.position.z - player.mesh.position.z;
+        const len = Math.sqrt(dx * dx + dz * dz);
+        if (len > 0.1) {
+          player.facing.set(dx / len, 0, dz / len);
+          player.mesh.rotation.y = Math.atan2(dx, dz);
+        }
+      }
       const scene = getScene();
       const dmg = processAttack3D(weapon, player, obstacle, scene);
       if (dmg > 0) damageObstacle3D(obstacle, dmg);
@@ -238,17 +248,13 @@ function restartRound() {
   resetPlayer3D(player);
   resetCameraOrbit();
 
-  // Reset obstacle
+  // Reset obstacle state in place (do NOT dispose — just reset values)
   if (obstacle) {
     const scene = getScene();
-    disposeObstacle3D(obstacle, scene);
-    // We'd need original data to recreate — store it
-    // For simplicity, just reset position and HP
-    // Actually let's store the original data
-  }
-
-  // Simpler approach: reset obstacle state in place
-  if (obstacle) {
+    // Re-add mesh to scene if it was removed
+    if (!obstacle.mesh.parent) {
+      scene.add(obstacle.mesh);
+    }
     obstacle.mesh.position.copy(obstacle.patrolCenter);
     obstacle.mesh.position.y = 0;
     obstacle.mesh.scale.setScalar(1);
