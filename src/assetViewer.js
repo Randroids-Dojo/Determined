@@ -55,19 +55,28 @@ export function startAssetViewer(canvas2d, canvas3d, entityData) {
   rimLight.position.set(-5, 3, -5);
   scene.add(rimLight);
 
-  // Ground plane for visual grounding
-  const groundGeo = new THREE.CircleGeometry(3, 32);
+  // Build 3D mesh from visual data
+  meshGroup = build3DMesh(visual);
+  scene.add(meshGroup);
+
+  // Auto-fit camera to model size
+  const bbox = new THREE.Box3().setFromObject(meshGroup);
+  const bsize = bbox.getSize(new THREE.Vector3());
+  const bcenter = bbox.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(bsize.x, bsize.y, bsize.z);
+  const fovRad = camera.fov * (Math.PI / 180);
+  const camDist = (maxDim / (2 * Math.tan(fovRad / 2))) + 1.5;
+  camera.position.set(0, bcenter.y, Math.max(camDist, 4));
+
+  // Ground plane sized to model
+  const groundGeo = new THREE.CircleGeometry(Math.max(maxDim * 1.2, 3), 32);
   const groundMat = new THREE.MeshStandardMaterial({
     color: 0x2a2a4e, roughness: 0.9, metalness: 0.1,
   });
   const ground = new THREE.Mesh(groundGeo, groundMat);
   ground.rotation.x = -Math.PI / 2;
-  ground.position.y = -0.01;
+  ground.position.y = bbox.min.y - 0.01;
   scene.add(ground);
-
-  // Build 3D mesh from visual data
-  meshGroup = build3DMesh(visual);
-  scene.add(meshGroup);
 
   // OrbitControls for manual rotation
   controls = new OrbitControls(camera, canvas3d);
@@ -75,11 +84,11 @@ export function startAssetViewer(canvas2d, canvas3d, entityData) {
   controls.dampingFactor = 0.08;
   controls.autoRotate = true;
   controls.autoRotateSpeed = 2.0;
-  controls.target.set(0, 1, 0);
+  controls.target.set(0, bcenter.y, 0);
   controls.enableZoom = true;
   controls.enablePan = false;
   controls.minDistance = 2;
-  controls.maxDistance = 12;
+  controls.maxDistance = 15;
   controls.update();
 
   // ── Animation Loop ──
@@ -183,7 +192,7 @@ function build3DMesh(visual) {
   // Build features from visual description
   if (visual.features && visual.features.length > 0) {
     for (const feature of visual.features) {
-      const mesh = buildFeature3D(feature, baseW, baseH, baseD);
+      const mesh = buildFeature3D(feature, visual, baseW, baseH, baseD);
       if (mesh) {
         mesh.position.y += baseH * 0.5 + 0.1;
         group.add(mesh);
@@ -200,14 +209,65 @@ function build3DMesh(visual) {
   return group;
 }
 
-function buildFeature3D(feature, baseW, baseH, baseD) {
+/**
+ * Determine z-position for a feature based on its label.
+ * Spreads features in depth instead of piling everything on the front face.
+ */
+function getFeatureZ(label, feature, vw, baseD) {
+  const l = label.toLowerCase();
+
+  // Tail goes behind the body
+  if (l.includes('tail')) return -baseD * 0.4;
+
+  // Wings sit at the sides/back
+  if (l.includes('wing')) return -baseD * 0.15;
+
+  // Legs: use x position to determine front vs back
+  if (l.includes('leg') || l.includes('foot') || l.includes('paw')) {
+    const fx = feature.x || 0;
+    const midX = vw / 2;
+    if (l.includes('front') || l.includes('fore')) return baseD * 0.2;
+    if (l.includes('back') || l.includes('hind') || l.includes('rear')) return -baseD * 0.2;
+    // Infer from x position: left side of 2D = front in 3D
+    return fx < midX ? baseD * 0.2 : -baseD * 0.2;
+  }
+
+  // Eyes and pupils: slightly in front of head
+  if (l.includes('pupil')) return baseD * 0.52;
+  if (l.includes('eye')) return baseD * 0.5;
+
+  // Nose, mouth: on front of head
+  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return baseD * 0.5;
+
+  // Head: at the front
+  if (l.includes('head') || l.includes('face')) return baseD * 0.45;
+
+  // Mane wraps around head
+  if (l.includes('mane')) return baseD * 0.35;
+
+  // Ears, horns: slightly forward
+  if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) return baseD * 0.35;
+
+  // Shell, armor: at the back
+  if (l.includes('shell') || l.includes('armor') || l.includes('back')) return -baseD * 0.3;
+
+  // Default: front face
+  return baseD * 0.4;
+}
+
+function buildFeature3D(feature, visual, baseW, baseH, baseD) {
   const color = parseColor(feature.color, 0x888888);
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.5, metalness: 0.2,
   });
 
-  const scaleX = baseW / 50;
-  const scaleY = baseH / 45;
+  const vw = visual.width || 50;
+  const vh = visual.height || 45;
+  const scaleX = baseW / vw;
+  const scaleY = baseH / vh;
+  const halfW = vw / 2;
+  const label = (feature.label || '').toLowerCase();
+  const zPos = getFeatureZ(label, feature, vw, baseD);
 
   switch (feature.type) {
     case 'circle': {
@@ -215,9 +275,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.SphereGeometry(r, 10, 10);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) - 25) * scaleX,
+        ((feature.x || 0) - halfW) * scaleX,
         ((feature.y || 0)) * -scaleY,
-        baseD * 0.45,
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -229,9 +289,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) + (feature.width || 10) / 2 - 25) * scaleX,
+        ((feature.x || 0) + (feature.width || 10) / 2 - halfW) * scaleX,
         ((feature.y || 0) + (feature.height || 10) / 2) * -scaleY,
-        baseD * 0.4,
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -241,19 +301,19 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       if (feature.points && feature.points.length >= 3) {
         const shape = new THREE.Shape();
         shape.moveTo(
-          (feature.points[0][0] - 25) * scaleX,
+          (feature.points[0][0] - halfW) * scaleX,
           feature.points[0][1] * -scaleY,
         );
         for (let i = 1; i < feature.points.length; i++) {
           shape.lineTo(
-            (feature.points[i][0] - 25) * scaleX,
+            (feature.points[i][0] - halfW) * scaleX,
             feature.points[i][1] * -scaleY,
           );
         }
         shape.closePath();
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: false });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.z = baseD * 0.4;
+        mesh.position.z = zPos;
         mesh.castShadow = true;
         return mesh;
       }
@@ -261,8 +321,8 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
     }
     case 'line': {
       const points = [
-        new THREE.Vector3(((feature.x1 || 0) - 25) * scaleX, (feature.y1 || 0) * -scaleY, baseD * 0.45),
-        new THREE.Vector3(((feature.x2 || 20) - 25) * scaleX, (feature.y2 || 20) * -scaleY, baseD * 0.45),
+        new THREE.Vector3(((feature.x1 || 0) - halfW) * scaleX, (feature.y1 || 0) * -scaleY, zPos),
+        new THREE.Vector3(((feature.x2 || 20) - halfW) * scaleX, (feature.y2 || 20) * -scaleY, zPos),
       ];
       const lineGeo = new THREE.BufferGeometry().setFromPoints(points);
       const lineMat = new THREE.LineBasicMaterial({ color, linewidth: 2 });
@@ -271,7 +331,7 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
     case 'arc': {
       const r = (feature.radius || 10) * scaleX;
       const curve = new THREE.EllipseCurve(
-        ((feature.x || 0) - 25) * scaleX,
+        ((feature.x || 0) - halfW) * scaleX,
         (feature.y || 0) * -scaleY,
         r, r,
         feature.startAngle || 0,
@@ -280,7 +340,7 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       );
       const arcPoints = curve.getPoints(20);
       const arcGeo = new THREE.BufferGeometry().setFromPoints(
-        arcPoints.map(p => new THREE.Vector3(p.x, p.y, baseD * 0.45)),
+        arcPoints.map(p => new THREE.Vector3(p.x, p.y, zPos)),
       );
       const arcMat = new THREE.LineBasicMaterial({ color });
       return new THREE.Line(arcGeo, arcMat);

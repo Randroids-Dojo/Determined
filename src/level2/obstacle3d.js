@@ -42,7 +42,7 @@ export function createObstacle3D(scene, obstacleData) {
   // Build features from visual description
   if (visual.features && visual.features.length > 0) {
     for (const feature of visual.features) {
-      const featureMesh = buildFeature3D(feature, baseW, baseH, baseD);
+      const featureMesh = buildFeature3D(feature, visual, baseW, baseH, baseD);
       if (featureMesh) {
         featureMesh.position.y += baseH * 0.5 + 0.1;
         group.add(featureMesh);
@@ -106,15 +106,43 @@ export function createObstacle3D(scene, obstacleData) {
   return state;
 }
 
-function buildFeature3D(feature, baseW, baseH, baseD) {
+/**
+ * Determine z-position for a feature based on its label.
+ */
+function getFeatureZ(label, feature, vw, baseD) {
+  const l = label.toLowerCase();
+  if (l.includes('tail')) return -baseD * 0.4;
+  if (l.includes('wing')) return -baseD * 0.15;
+  if (l.includes('leg') || l.includes('foot') || l.includes('paw')) {
+    const fx = feature.x || 0;
+    const midX = vw / 2;
+    if (l.includes('front') || l.includes('fore')) return baseD * 0.2;
+    if (l.includes('back') || l.includes('hind') || l.includes('rear')) return -baseD * 0.2;
+    return fx < midX ? baseD * 0.2 : -baseD * 0.2;
+  }
+  if (l.includes('pupil')) return baseD * 0.52;
+  if (l.includes('eye')) return baseD * 0.5;
+  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return baseD * 0.5;
+  if (l.includes('head') || l.includes('face')) return baseD * 0.45;
+  if (l.includes('mane')) return baseD * 0.35;
+  if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) return baseD * 0.35;
+  if (l.includes('shell') || l.includes('armor') || l.includes('back')) return -baseD * 0.3;
+  return baseD * 0.4;
+}
+
+function buildFeature3D(feature, visual, baseW, baseH, baseD) {
   const color = parseColor(feature.color, 0x888888);
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.5, metalness: 0.2,
   });
 
-  // Convert 2D coordinates to 3D offsets
-  const scaleX = baseW / 50; // Normalize from ~50px visual space
-  const scaleY = baseH / 45;
+  const vw = visual.width || 50;
+  const vh = visual.height || 45;
+  const scaleX = baseW / vw;
+  const scaleY = baseH / vh;
+  const halfW = vw / 2;
+  const label = (feature.label || '').toLowerCase();
+  const zPos = getFeatureZ(label, feature, vw, baseD);
 
   switch (feature.type) {
     case 'circle': {
@@ -122,9 +150,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.SphereGeometry(r, 10, 10);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) - 25) * scaleX,  // Center-relative
+        ((feature.x || 0) - halfW) * scaleX,
         ((feature.y || 0)) * -scaleY,
-        baseD * 0.45,  // On the front face
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -136,9 +164,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) + (feature.width || 10) / 2 - 25) * scaleX,
+        ((feature.x || 0) + (feature.width || 10) / 2 - halfW) * scaleX,
         ((feature.y || 0) + (feature.height || 10) / 2) * -scaleY,
-        baseD * 0.4,
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -148,19 +176,19 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       if (feature.points && feature.points.length >= 3) {
         const shape = new THREE.Shape();
         shape.moveTo(
-          (feature.points[0][0] - 25) * scaleX,
+          (feature.points[0][0] - halfW) * scaleX,
           feature.points[0][1] * -scaleY,
         );
         for (let i = 1; i < feature.points.length; i++) {
           shape.lineTo(
-            (feature.points[i][0] - 25) * scaleX,
+            (feature.points[i][0] - halfW) * scaleX,
             feature.points[i][1] * -scaleY,
           );
         }
         shape.closePath();
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: false });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.z = baseD * 0.4;
+        mesh.position.z = zPos;
         mesh.castShadow = true;
         return mesh;
       }
