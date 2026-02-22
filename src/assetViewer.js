@@ -152,19 +152,47 @@ export function startAssetViewer(canvas2d, canvas3d, entityData) {
 }
 
 /**
+ * Categorize features by body part label for semantic 3D positioning.
+ */
+function categorizeFeatures(features) {
+  const parts = {
+    head: null, mane: null, nose: null, mouth: null,
+    eyes: [], pupils: [], ears: [], legs: [], tail: [], wings: [], other: [],
+  };
+  for (const f of features) {
+    const l = (f.label || '').toLowerCase();
+    if (l.includes('pupil')) parts.pupils.push(f);
+    else if (l.includes('eye')) parts.eyes.push(f);
+    else if (l.includes('head') || l.includes('face')) parts.head = f;
+    else if (l.includes('mane')) parts.mane = f;
+    else if (l.includes('nose') || l.includes('snout') || l.includes('beak')) parts.nose = f;
+    else if (l.includes('mouth') || l.includes('jaw')) parts.mouth = f;
+    else if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) parts.ears.push(f);
+    else if (l.includes('leg') || l.includes('foot') || l.includes('paw') || l.includes('tentacle')) parts.legs.push(f);
+    else if (l.includes('tail')) parts.tail.push(f);
+    else if (l.includes('wing') || l.includes('fin')) parts.wings.push(f);
+    else parts.other.push(f);
+  }
+  return parts;
+}
+
+/**
  * Build a 3D mesh group from a 2D visual description.
+ * Uses semantic label-based positioning for recognized body parts,
+ * with coordinate-based fallback for unrecognized features.
  */
 function build3DMesh(visual) {
   const group = new THREE.Group();
-
   const primaryColor = parseColor(visual.color_primary, 0xcc3333);
-  const secondaryColor = parseColor(visual.color_secondary, 0xff6666);
 
-  const baseW = (visual.width || 50) / 25;
-  const baseH = (visual.height || 45) / 25;
+  const vw = visual.width || 50;
+  const vh = visual.height || 45;
+  const baseW = vw / 25;
+  const baseH = vh / 25;
   const baseD = Math.max(baseW, baseH) * 0.7;
+  const scaleU = baseW / vw;
 
-  // Main body
+  // === BODY ===
   let bodyGeo;
   switch (visual.base_shape) {
     case 'circle':
@@ -176,46 +204,187 @@ function build3DMesh(visual) {
     default:
       bodyGeo = new THREE.BoxGeometry(baseW, baseH, baseD);
   }
-
   const bodyMat = new THREE.MeshStandardMaterial({
-    color: primaryColor,
-    roughness: 0.5,
-    metalness: 0.3,
-    emissive: primaryColor,
-    emissiveIntensity: 0.15,
+    color: primaryColor, roughness: 0.5, metalness: 0.3,
+    emissive: primaryColor, emissiveIntensity: 0.15,
   });
   const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
-  bodyMesh.position.y = baseH * 0.5 + 0.1;
+  bodyMesh.position.y = baseH * 0.5;
   bodyMesh.castShadow = true;
   group.add(bodyMesh);
 
-  // Find head feature radius for positioning face features on its surface
-  let headRadius3D = 0;
-  if (visual.features) {
-    for (const f of visual.features) {
-      const lbl = (f.label || '').toLowerCase();
-      if (lbl.includes('head') && f.type === 'circle') {
-        headRadius3D = (f.radius || 10) * (baseW / (visual.width || 50));
-        break;
-      }
+  // Reference points
+  const bodyTopY = baseH;
+  const bodyCenterY = baseH * 0.5;
+  const bodyFrontZ = baseD * 0.5;
+  const bodyBackZ = -baseD * 0.5;
+
+  // Categorize features by body part
+  const parts = categorizeFeatures(visual.features || []);
+
+  // === HEAD ===
+  const headR = parts.head ? (parts.head.radius || 12) * scaleU : baseW * 0.22;
+  const headY = bodyTopY - headR * 0.15;
+  const headZ = bodyFrontZ + headR * 0.65;
+
+  if (parts.head) {
+    const hm = new THREE.Mesh(
+      new THREE.SphereGeometry(headR, 14, 14),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.head.color, primaryColor), roughness: 0.5, metalness: 0.2,
+      }),
+    );
+    hm.position.set(0, headY, headZ);
+    hm.castShadow = true;
+    group.add(hm);
+  }
+
+  // === MANE ===
+  if (parts.mane) {
+    const mr = (parts.mane.radius || 20) * scaleU;
+    const mm = new THREE.Mesh(
+      new THREE.SphereGeometry(mr, 12, 12),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.mane.color, primaryColor), roughness: 0.6, metalness: 0.15,
+      }),
+    );
+    mm.position.set(0, headY, headZ - headR * 0.35);
+    mm.castShadow = true;
+    group.add(mm);
+  }
+
+  // === EYES ===
+  const eyeSpread = headR * 0.45;
+  const eyeY = headY + headR * 0.15;
+  const eyeZ = headZ + headR * 0.85;
+
+  for (const eye of parts.eyes) {
+    const er = (eye.radius || 3) * scaleU;
+    const em = new THREE.Mesh(
+      new THREE.SphereGeometry(er, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(eye.color, 0xffffff), roughness: 0.3, metalness: 0.1,
+      }),
+    );
+    const side = (eye.label || '').includes('right') ? 1 : -1;
+    em.position.set(side * eyeSpread, eyeY, eyeZ);
+    group.add(em);
+  }
+
+  // === PUPILS ===
+  for (const pupil of parts.pupils) {
+    const pr = (pupil.radius || 1.5) * scaleU;
+    const pm = new THREE.Mesh(
+      new THREE.SphereGeometry(pr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(pupil.color, 0x111111), roughness: 0.3, metalness: 0.1,
+      }),
+    );
+    const side = (pupil.label || '').includes('right') ? 1 : -1;
+    pm.position.set(side * eyeSpread, eyeY, eyeZ + pr);
+    group.add(pm);
+  }
+
+  // === NOSE ===
+  if (parts.nose) {
+    const nr = (parts.nose.radius || 3) * scaleU;
+    const nm = new THREE.Mesh(
+      new THREE.SphereGeometry(nr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.nose.color, 0x333333), roughness: 0.5, metalness: 0.1,
+      }),
+    );
+    nm.position.set(0, headY - headR * 0.3, eyeZ);
+    group.add(nm);
+  }
+
+  // === EARS ===
+  for (const ear of parts.ears) {
+    const side = (ear.label || '').includes('right') ? 1 : -1;
+    const eg = new THREE.ConeGeometry(headR * 0.2, headR * 0.5, 4);
+    const em = new THREE.Mesh(eg, new THREE.MeshStandardMaterial({
+      color: parseColor(ear.color, primaryColor), roughness: 0.5, metalness: 0.2,
+    }));
+    em.position.set(side * headR * 0.55, headY + headR * 0.85, headZ);
+    em.castShadow = true;
+    group.add(em);
+  }
+
+  // === LEGS (cylinders at body corners) ===
+  if (parts.legs.length > 0) {
+    const slots = [
+      { x: -baseW * 0.3, z: baseD * 0.25 },
+      { x: baseW * 0.3, z: baseD * 0.25 },
+      { x: -baseW * 0.3, z: -baseD * 0.25 },
+      { x: baseW * 0.3, z: -baseD * 0.25 },
+    ];
+    for (let i = 0; i < Math.min(parts.legs.length, slots.length); i++) {
+      const leg = parts.legs[i];
+      const lh = (leg.height || 15) * scaleU;
+      const lr = (leg.width || 8) * scaleU * 0.35;
+      const lg = new THREE.CylinderGeometry(lr, lr * 0.85, lh, 8);
+      const lm = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({
+        color: parseColor(leg.color, primaryColor), roughness: 0.5, metalness: 0.2,
+      }));
+      lm.position.set(slots[i].x, -lh * 0.5, slots[i].z);
+      lm.castShadow = true;
+      group.add(lm);
     }
   }
 
-  // Build features from visual description
-  if (visual.features && visual.features.length > 0) {
-    for (const feature of visual.features) {
-      const mesh = buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D);
-      if (mesh) {
-        mesh.position.y += baseH * 0.5 + 0.1;
-        group.add(mesh);
-      }
+  // === TAIL ===
+  for (const tail of parts.tail) {
+    const tc = parseColor(tail.color, primaryColor);
+    if (tail.type === 'line') {
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, bodyCenterY, bodyBackZ),
+        new THREE.Vector3(0, bodyCenterY + baseH * 0.4, bodyBackZ - baseW * 0.2),
+        new THREE.Vector3(0, bodyCenterY + baseH * 0.6, bodyBackZ - baseW * 0.4),
+      );
+      group.add(new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 10, 0.05, 6, false),
+        new THREE.MeshStandardMaterial({ color: tc, roughness: 0.5, metalness: 0.2 }),
+      ));
+    } else if (tail.type === 'circle') {
+      const tr = (tail.radius || 5) * scaleU;
+      const tm = new THREE.Mesh(
+        new THREE.SphereGeometry(tr, 8, 8),
+        new THREE.MeshStandardMaterial({ color: tc, roughness: 0.5, metalness: 0.2 }),
+      );
+      tm.position.set(0, bodyCenterY + baseH * 0.3, bodyBackZ - baseW * 0.35);
+      group.add(tm);
+    }
+  }
+
+  // === WINGS ===
+  for (const wing of parts.wings) {
+    const wc = parseColor(wing.color, primaryColor);
+    const side = (wing.label || '').includes('right') ? 1 : -1;
+    const ww = (wing.type === 'circle' ? (wing.radius || 15) * 2 : (wing.width || 20)) * scaleU;
+    const wh = (wing.type === 'circle' ? (wing.radius || 15) * 2 : (wing.height || 15)) * scaleU;
+    const wm = new THREE.Mesh(
+      new THREE.BoxGeometry(ww, wh, 0.05),
+      new THREE.MeshStandardMaterial({ color: wc, roughness: 0.5, metalness: 0.2 }),
+    );
+    wm.position.set(side * (baseW * 0.5 + ww * 0.4), bodyCenterY + baseH * 0.15, 0);
+    wm.rotation.z = side * -0.3;
+    wm.castShadow = true;
+    group.add(wm);
+  }
+
+  // === UNCATEGORIZED features → coordinate fallback ===
+  for (const feature of parts.other) {
+    const mesh = buildFeature3D(feature, visual, baseW, baseH, baseD, 0);
+    if (mesh) {
+      mesh.position.y += baseH;
+      group.add(mesh);
     }
   }
 
   // Eye glow
   const accentColor = parseColor(visual.color_accent, primaryColor);
   const eyeLight = new THREE.PointLight(accentColor, 0.5, 5);
-  eyeLight.position.set(0, baseH * 0.7, baseD * 0.4);
+  eyeLight.position.set(0, headY, headZ);
   group.add(eyeLight);
 
   return group;
