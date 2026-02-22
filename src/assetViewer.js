@@ -222,10 +222,11 @@ function build3DMesh(visual) {
   // Categorize features by body part
   const parts = categorizeFeatures(visual.features || []);
 
-  // === HEAD ===
-  const headR = parts.head ? (parts.head.radius || 12) * scaleU : baseW * 0.22;
-  const headY = bodyTopY - headR * 0.15;
-  const headZ = bodyFrontZ + headR * 0.65;
+  // === HEAD (capped to stay proportional to body) ===
+  const headRaw = parts.head ? (parts.head.radius || 12) * scaleU : baseW * 0.22;
+  const headR = Math.min(headRaw, baseW * 0.28);
+  const headY = bodyTopY - headR * 0.1;
+  const headZ = bodyFrontZ + headR * 0.7;
 
   if (parts.head) {
     const hm = new THREE.Mesh(
@@ -239,27 +240,27 @@ function build3DMesh(visual) {
     group.add(hm);
   }
 
-  // === MANE ===
+  // === MANE (slightly larger than head, not raw 2D radius) ===
   if (parts.mane) {
-    const mr = (parts.mane.radius || 20) * scaleU;
+    const mr = Math.min((parts.mane.radius || 20) * scaleU, headR * 1.3);
     const mm = new THREE.Mesh(
       new THREE.SphereGeometry(mr, 12, 12),
       new THREE.MeshStandardMaterial({
         color: parseColor(parts.mane.color, primaryColor), roughness: 0.6, metalness: 0.15,
       }),
     );
-    mm.position.set(0, headY, headZ - headR * 0.35);
+    mm.position.set(0, headY, headZ - headR * 0.3);
     mm.castShadow = true;
     group.add(mm);
   }
 
-  // === EYES ===
-  const eyeSpread = headR * 0.45;
+  // === EYES (minimum size relative to head so they're visible) ===
+  const eyeSpread = headR * 0.5;
   const eyeY = headY + headR * 0.15;
-  const eyeZ = headZ + headR * 0.85;
+  const eyeZ = headZ + headR * 0.88;
 
   for (const eye of parts.eyes) {
-    const er = (eye.radius || 3) * scaleU;
+    const er = Math.max((eye.radius || 3) * scaleU, headR * 0.15);
     const em = new THREE.Mesh(
       new THREE.SphereGeometry(er, 8, 8),
       new THREE.MeshStandardMaterial({
@@ -271,9 +272,9 @@ function build3DMesh(visual) {
     group.add(em);
   }
 
-  // === PUPILS ===
+  // === PUPILS (minimum size relative to head) ===
   for (const pupil of parts.pupils) {
-    const pr = (pupil.radius || 1.5) * scaleU;
+    const pr = Math.max((pupil.radius || 1.5) * scaleU, headR * 0.08);
     const pm = new THREE.Mesh(
       new THREE.SphereGeometry(pr, 8, 8),
       new THREE.MeshStandardMaterial({
@@ -285,9 +286,9 @@ function build3DMesh(visual) {
     group.add(pm);
   }
 
-  // === NOSE ===
+  // === NOSE (minimum size so it's visible) ===
   if (parts.nose) {
-    const nr = (parts.nose.radius || 3) * scaleU;
+    const nr = Math.max((parts.nose.radius || 3) * scaleU, headR * 0.12);
     const nm = new THREE.Mesh(
       new THREE.SphereGeometry(nr, 8, 8),
       new THREE.MeshStandardMaterial({
@@ -298,14 +299,14 @@ function build3DMesh(visual) {
     group.add(nm);
   }
 
-  // === EARS ===
+  // === EARS (larger cones so they're visible) ===
   for (const ear of parts.ears) {
     const side = (ear.label || '').includes('right') ? 1 : -1;
-    const eg = new THREE.ConeGeometry(headR * 0.2, headR * 0.5, 4);
+    const eg = new THREE.ConeGeometry(headR * 0.3, headR * 0.7, 4);
     const em = new THREE.Mesh(eg, new THREE.MeshStandardMaterial({
       color: parseColor(ear.color, primaryColor), roughness: 0.5, metalness: 0.2,
     }));
-    em.position.set(side * headR * 0.55, headY + headR * 0.85, headZ);
+    em.position.set(side * headR * 0.6, headY + headR * 0.9, headZ);
     em.castShadow = true;
     group.add(em);
   }
@@ -342,7 +343,7 @@ function build3DMesh(visual) {
         new THREE.Vector3(0, bodyCenterY + baseH * 0.6, bodyBackZ - baseW * 0.4),
       );
       group.add(new THREE.Mesh(
-        new THREE.TubeGeometry(curve, 10, 0.05, 6, false),
+        new THREE.TubeGeometry(curve, 10, baseW * 0.03, 6, false),
         new THREE.MeshStandardMaterial({ color: tc, roughness: 0.5, metalness: 0.2 }),
       ));
     } else if (tail.type === 'circle') {
