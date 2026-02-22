@@ -72,12 +72,22 @@ export function drawVisual(ctx, visual, x, y, facingLeft = false) {
     color: visual.color_primary || '#888',
   });
 
-  // Draw features on top
-  for (const feature of visual.features) {
+  // Draw features on top, sorted largest-first so small details (eyes, pupils) appear on top
+  const sorted = [...visual.features].sort((a, b) => featureArea(b) - featureArea(a));
+  for (const feature of sorted) {
     drawShape(ctx, feature);
   }
 
   ctx.restore();
+}
+
+/** Approximate area of a feature for draw-order sorting. */
+function featureArea(f) {
+  switch (f.type) {
+    case 'circle': return Math.PI * (f.radius || 10) ** 2;
+    case 'rectangle': return (f.width || 20) * (f.height || 20);
+    default: return 0;
+  }
 }
 
 /** Draw a single shape primitive. */
