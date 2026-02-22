@@ -134,8 +134,8 @@ Example: if the creature is "lion", a good visual would be:
     { "type": "ellipse", "label": "snout", "x": 15, "y": 22, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
     { "type": "ellipse", "label": "nose", "x": 15, "y": 20, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
     { "type": "arc", "label": "mouth", "x": 15, "y": 24, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
-    { "type": "triangle", "label": "ear_left", "points": [[3,2],[-1,-10],[9,-3]], "color": "#C09020" },
-    { "type": "triangle", "label": "ear_right", "points": [[27,2],[31,-10],[21,-3]], "color": "#C09020" },
+    { "type": "triangle", "label": "ear_left", "points": [[4,5],[1,-5],[11,1]], "color": "#C09020" },
+    { "type": "triangle", "label": "ear_right", "points": [[28,5],[19,1],[29,-5]], "color": "#C09020" },
     { "type": "roundedRect", "label": "front_leg_left", "x": 20, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
     { "type": "roundedRect", "label": "front_leg_right", "x": 32, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#B87A10" },
     { "type": "roundedRect", "label": "back_leg_left", "x": 48, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
@@ -154,6 +154,7 @@ KEY ANATOMY RULES:
 - The base_shape is a bounding hint — the REAL body shape is the large "body" ellipse feature.
 - Legs should be positioned at the BOTTOM of the body (y ≈ 34+ for a 50px tall creature), spread evenly under the body.
 - Use 3-4 related colors: primary for body, slightly darker for legs/back features, lighter for belly/snout, dark accent for nose/pupils.
+- For EARS: use short, wide triangles (base ≈ 8px, height ≈ 10px) sitting on top of the head. NOT tall narrow spikes — those look like antennae.
 - Add creature-specific features: mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, fins for fish, stripes as extra ellipses.`;
 
 function buildPrompt(words) {

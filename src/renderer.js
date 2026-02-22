@@ -141,14 +141,15 @@ function drawShape(ctx, shape) {
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   ctx.lineWidth = shape.lineWidth || 2;
-  // Shapes with label containing "pupil" or "eye" are small details — skip outlines
-  const isDetail = /pupil/i.test(shape.label || '');
+  // Skip outlines on pupils (tiny details) and mane/body (large overlapping shapes where outlines cut through)
+  const label = (shape.label || '').toLowerCase();
+  const skipOutline = /pupil/.test(label) || /mane/.test(label) || /body/.test(label) || label === 'base';
 
   switch (shape.type) {
     case 'circle':
       drawFilled(ctx, color, () => {
         ctx.arc(shape.x || 0, shape.y || 0, shape.radius || 10, 0, Math.PI * 2);
-      }, !isDetail);
+      }, !skipOutline);
       break;
 
     case 'ellipse': {
@@ -156,14 +157,14 @@ function drawShape(ctx, shape) {
       const ry = shape.radiusY || shape.radius || 10;
       drawFilled(ctx, color, () => {
         ctx.ellipse(shape.x || 0, shape.y || 0, rx, ry, shape.rotation || 0, 0, Math.PI * 2);
-      }, !isDetail);
+      }, !skipOutline);
       break;
     }
 
     case 'rectangle':
       drawFilled(ctx, color, () => {
         ctx.rect(shape.x || 0, shape.y || 0, shape.width || 20, shape.height || 20);
-      }, !isDetail);
+      }, !skipOutline);
       break;
 
     case 'roundedRect': {
