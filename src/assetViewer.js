@@ -386,12 +386,6 @@ function build3DMesh(visual) {
     }
   }
 
-  // Eye glow
-  const accentColor = parseColor(visual.color_accent, primaryColor);
-  const eyeLight = new THREE.PointLight(accentColor, 0.5, 5);
-  eyeLight.position.set(0, headY, headZ);
-  group.add(eyeLight);
-
   return group;
 }
 
