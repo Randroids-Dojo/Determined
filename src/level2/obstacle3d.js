@@ -149,7 +149,7 @@ export function createObstacle3D(scene, obstacleData) {
     group.add(em);
   }
 
-  // LEGS (cylinders at body corners)
+  // LEGS (cylinders at body corners, attached to body surface)
   if (parts.legs.length > 0) {
     const slots = [
       { x: -baseW * 0.3, z: baseD * 0.25 },
@@ -157,15 +157,24 @@ export function createObstacle3D(scene, obstacleData) {
       { x: -baseW * 0.3, z: -baseD * 0.25 },
       { x: baseW * 0.3, z: -baseD * 0.25 },
     ];
+    // Body is an ellipsoid at bodyCenterY; compute surface y at each leg position
+    const semiX = baseW * 0.5;
+    const semiY = baseH * 0.5;
+    const semiZ = baseD * 0.5;
     for (let i = 0; i < Math.min(parts.legs.length, slots.length); i++) {
       const leg = parts.legs[i];
       const lh = (leg.height || 15) * scaleU;
       const lr = (leg.width || 8) * scaleU * 0.35;
+      // Find where the body surface actually is at this (x,z)
+      const nx = (slots[i].x / semiX) ** 2;
+      const nz = (slots[i].z / semiZ) ** 2;
+      const inside = Math.max(0, 1 - nx - nz);
+      const surfaceY = bodyCenterY - Math.sqrt(inside) * semiY;
       const lg = new THREE.CylinderGeometry(lr, lr * 0.85, lh, 8);
       const lm = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({
         color: parseColor(leg.color, primaryColor), roughness: 0.5, metalness: 0.2,
       }));
-      lm.position.set(slots[i].x, -lh * 0.5, slots[i].z);
+      lm.position.set(slots[i].x, surfaceY - lh * 0.5, slots[i].z);
       lm.castShadow = true;
       group.add(lm);
     }
