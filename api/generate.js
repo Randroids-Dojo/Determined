@@ -125,25 +125,26 @@ Example: if the creature is "lion", a good visual would be:
   "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
   "features": [
     { "type": "ellipse", "label": "body", "x": 40, "y": 24, "radiusX": 26, "radiusY": 15, "color": "#D4A030" },
-    { "type": "circle", "label": "mane", "x": 16, "y": 14, "radius": 22, "color": "#8B5E10" },
-    { "type": "circle", "label": "head", "x": 16, "y": 16, "radius": 14, "color": "#E0B040" },
-    { "type": "circle", "label": "eye_left", "x": 10, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
-    { "type": "circle", "label": "eye_right", "x": 20, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
-    { "type": "circle", "label": "pupil_left", "x": 11, "y": 13, "radius": 2, "color": "#1A1000" },
-    { "type": "circle", "label": "pupil_right", "x": 21, "y": 13, "radius": 2, "color": "#1A1000" },
-    { "type": "ellipse", "label": "snout", "x": 15, "y": 22, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
-    { "type": "ellipse", "label": "nose", "x": 15, "y": 20, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
-    { "type": "arc", "label": "mouth", "x": 15, "y": 24, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
-    { "type": "triangle", "label": "ear_left", "points": [[4,5],[1,-5],[11,1]], "color": "#C09020" },
-    { "type": "triangle", "label": "ear_right", "points": [[28,5],[19,1],[29,-5]], "color": "#C09020" },
-    { "type": "roundedRect", "label": "front_leg_left", "x": 20, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
-    { "type": "roundedRect", "label": "front_leg_right", "x": 32, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#B87A10" },
-    { "type": "roundedRect", "label": "back_leg_left", "x": 48, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
-    { "type": "roundedRect", "label": "back_leg_right", "x": 58, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#B87A10" },
-    { "type": "line", "label": "tail", "x1": 64, "y1": 18, "x2": 76, "y2": 6, "lineWidth": 3, "color": "#B87A10" },
-    { "type": "circle", "label": "tail_tuft", "x": 77, "y": 5, "radius": 5, "color": "#8B5E0A" }
+    { "type": "circle", "label": "mane", "x": 18, "y": 18, "radius": 18, "color": "#8B5E10" },
+    { "type": "circle", "label": "head", "x": 18, "y": 18, "radius": 14, "color": "#E0B040" },
+    { "type": "circle", "label": "eye_left", "x": 12, "y": 15, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "eye_right", "x": 22, "y": 15, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "pupil_left", "x": 13, "y": 15, "radius": 2, "color": "#1A1000" },
+    { "type": "circle", "label": "pupil_right", "x": 23, "y": 15, "radius": 2, "color": "#1A1000" },
+    { "type": "ellipse", "label": "snout", "x": 17, "y": 24, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
+    { "type": "ellipse", "label": "nose", "x": 17, "y": 22, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
+    { "type": "arc", "label": "mouth", "x": 17, "y": 26, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
+    { "type": "triangle", "label": "ear_left", "points": [[6,6],[3,0],[13,3]], "color": "#C09020" },
+    { "type": "triangle", "label": "ear_right", "points": [[30,6],[21,3],[31,0]], "color": "#C09020" },
+    { "type": "roundedRect", "label": "front_leg_left", "x": 20, "y": 34, "width": 9, "height": 16, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "front_leg_right", "x": 32, "y": 34, "width": 9, "height": 16, "cornerRadius": 4, "color": "#B87A10" },
+    { "type": "roundedRect", "label": "back_leg_left", "x": 48, "y": 34, "width": 9, "height": 16, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "back_leg_right", "x": 58, "y": 34, "width": 9, "height": 16, "cornerRadius": 4, "color": "#B87A10" },
+    { "type": "line", "label": "tail", "x1": 64, "y1": 18, "x2": 70, "y2": 10, "lineWidth": 3, "color": "#B87A10" },
+    { "type": "circle", "label": "tail_tuft", "x": 68, "y": 8, "radius": 5, "color": "#8B5E0A" }
   ]
 }
+IMPORTANT: ALL features must stay within the bounding box (0,0) to (width,height). Circle/ellipse centers minus their radius must be >= 0, and centers plus radius must be <= width/height. Triangle/polygon points must all be >= 0. No negative coordinates!
 KEY ANATOMY RULES:
 - This is a SIDE-VIEW sprite. Head on the LEFT, body in the CENTER, tail on the RIGHT. Legs at the BOTTOM.
 - Make the HEAD BIG — radius 12-16 for a 70px wide creature. Game sprites need oversized, expressive heads.
