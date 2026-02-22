@@ -16,7 +16,6 @@ export function createObstacle3D(scene, obstacleData) {
   const visual = data.visual || {};
   const primaryColor = parseColor(visual.color_primary, 0xcc3333);
   const secondaryColor = parseColor(visual.color_secondary, 0xff6666);
-  const accentColor = parseColor(visual.color_accent, 0x220000);
 
   // Scale up the 2D visual dimensions to 3D
   const baseW = (visual.width || 50) / 25;  // Normalize to ~2 units
@@ -39,21 +38,187 @@ export function createObstacle3D(scene, obstacleData) {
   bodyMesh.castShadow = true;
   group.add(bodyMesh);
 
-  // Build features from visual description
-  if (visual.features && visual.features.length > 0) {
-    for (const feature of visual.features) {
-      const featureMesh = buildFeature3D(feature, baseW, baseH, baseD);
-      if (featureMesh) {
-        featureMesh.position.y += baseH * 0.5 + 0.1;
-        group.add(featureMesh);
-      }
+  // Semantic 3D feature building
+  const vw = visual.width || 50;
+  const scaleU = baseW / vw;
+  const parts = categorizeFeatures(visual.features || []);
+
+  const bodyTopY = baseH + 0.1;
+  const bodyCenterY = baseH * 0.5 + 0.1;
+  const bodyFrontZ = baseD * 0.5;
+  const bodyBackZ = -baseD * 0.5;
+
+  // HEAD (capped to stay proportional to body)
+  const headRaw = parts.head ? (parts.head.radius || 12) * scaleU : baseW * 0.22;
+  const headR = Math.min(headRaw, baseW * 0.28);
+  const headY = bodyTopY - headR * 0.1;
+  const headZ = bodyFrontZ + headR * 0.7;
+
+  if (parts.head) {
+    const hm = new THREE.Mesh(
+      new THREE.SphereGeometry(headR, 14, 14),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.head.color, primaryColor), roughness: 0.5, metalness: 0.2,
+      }),
+    );
+    hm.position.set(0, headY, headZ);
+    hm.castShadow = true;
+    group.add(hm);
+  }
+
+  // MANE (slightly larger than head, not raw 2D radius)
+  if (parts.mane) {
+    const mr = Math.min((parts.mane.radius || 20) * scaleU, headR * 1.3);
+    const mm = new THREE.Mesh(
+      new THREE.SphereGeometry(mr, 12, 12),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.mane.color, primaryColor), roughness: 0.6, metalness: 0.15,
+      }),
+    );
+    mm.position.set(0, headY, headZ - headR * 0.3);
+    mm.castShadow = true;
+    group.add(mm);
+  }
+
+  // EYES (minimum size relative to head so they're visible)
+  const eyeSpread = headR * 0.5;
+  const eyeY = headY + headR * 0.15;
+  const eyeZ = headZ + headR * 0.88;
+  for (const eye of parts.eyes) {
+    const er = Math.max((eye.radius || 3) * scaleU, headR * 0.15);
+    const em = new THREE.Mesh(
+      new THREE.SphereGeometry(er, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(eye.color, 0xffffff), roughness: 0.3, metalness: 0.1,
+      }),
+    );
+    const side = (eye.label || '').includes('right') ? 1 : -1;
+    em.position.set(side * eyeSpread, eyeY, eyeZ);
+    group.add(em);
+  }
+
+  // PUPILS (minimum size relative to head)
+  for (const pupil of parts.pupils) {
+    const pr = Math.max((pupil.radius || 1.5) * scaleU, headR * 0.08);
+    const pm = new THREE.Mesh(
+      new THREE.SphereGeometry(pr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(pupil.color, 0x111111), roughness: 0.3, metalness: 0.1,
+      }),
+    );
+    const side = (pupil.label || '').includes('right') ? 1 : -1;
+    pm.position.set(side * eyeSpread, eyeY, eyeZ + pr);
+    group.add(pm);
+  }
+
+  // NOSE (minimum size so it's visible)
+  if (parts.nose) {
+    const nr = Math.max((parts.nose.radius || 3) * scaleU, headR * 0.12);
+    const nm = new THREE.Mesh(
+      new THREE.SphereGeometry(nr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.nose.color, 0x333333), roughness: 0.5, metalness: 0.1,
+      }),
+    );
+    nm.position.set(0, headY - headR * 0.3, eyeZ);
+    group.add(nm);
+  }
+
+  // MOUTH / TONGUE (small shape below nose on the head front)
+  if (parts.mouth) {
+    const mr = Math.max((parts.mouth.radius || 3) * scaleU, headR * 0.1);
+    const mm = new THREE.Mesh(
+      new THREE.SphereGeometry(mr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.mouth.color, 0x333333), roughness: 0.4, metalness: 0.1,
+      }),
+    );
+    mm.position.set(0, headY - headR * 0.55, eyeZ);
+    group.add(mm);
+  }
+
+  // EARS (larger cones so they're visible)
+  for (const ear of parts.ears) {
+    const side = (ear.label || '').includes('right') ? 1 : -1;
+    const eg = new THREE.ConeGeometry(headR * 0.3, headR * 0.7, 4);
+    const em = new THREE.Mesh(eg, new THREE.MeshStandardMaterial({
+      color: parseColor(ear.color, primaryColor), roughness: 0.5, metalness: 0.2,
+    }));
+    em.position.set(side * headR * 0.6, headY + headR * 0.9, headZ);
+    em.castShadow = true;
+    group.add(em);
+  }
+
+  // LEGS (cylinders at body corners)
+  if (parts.legs.length > 0) {
+    const slots = [
+      { x: -baseW * 0.3, z: baseD * 0.25 },
+      { x: baseW * 0.3, z: baseD * 0.25 },
+      { x: -baseW * 0.3, z: -baseD * 0.25 },
+      { x: baseW * 0.3, z: -baseD * 0.25 },
+    ];
+    for (let i = 0; i < Math.min(parts.legs.length, slots.length); i++) {
+      const leg = parts.legs[i];
+      const lh = (leg.height || 15) * scaleU;
+      const lr = (leg.width || 8) * scaleU * 0.35;
+      const lg = new THREE.CylinderGeometry(lr, lr * 0.85, lh, 8);
+      const lm = new THREE.Mesh(lg, new THREE.MeshStandardMaterial({
+        color: parseColor(leg.color, primaryColor), roughness: 0.5, metalness: 0.2,
+      }));
+      lm.position.set(slots[i].x, -lh * 0.5, slots[i].z);
+      lm.castShadow = true;
+      group.add(lm);
     }
   }
 
-  // Eye glow (always add for menacing look)
-  const eyeLight = new THREE.PointLight(accentColor, 0.5, 5);
-  eyeLight.position.set(0, baseH * 0.7, baseD * 0.4);
-  group.add(eyeLight);
+  // TAIL
+  for (const tail of parts.tail) {
+    const tc = parseColor(tail.color, primaryColor);
+    if (tail.type === 'line') {
+      const curve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(0, bodyCenterY, bodyBackZ),
+        new THREE.Vector3(0, bodyCenterY + baseH * 0.4, bodyBackZ - baseW * 0.2),
+        new THREE.Vector3(0, bodyCenterY + baseH * 0.6, bodyBackZ - baseW * 0.4),
+      );
+      group.add(new THREE.Mesh(
+        new THREE.TubeGeometry(curve, 10, baseW * 0.03, 6, false),
+        new THREE.MeshStandardMaterial({ color: tc, roughness: 0.5, metalness: 0.2 }),
+      ));
+    } else if (tail.type === 'circle') {
+      const tr = (tail.radius || 5) * scaleU;
+      const tm = new THREE.Mesh(
+        new THREE.SphereGeometry(tr, 8, 8),
+        new THREE.MeshStandardMaterial({ color: tc, roughness: 0.5, metalness: 0.2 }),
+      );
+      tm.position.set(0, bodyCenterY + baseH * 0.3, bodyBackZ - baseW * 0.35);
+      group.add(tm);
+    }
+  }
+
+  // WINGS
+  for (const wing of parts.wings) {
+    const wc = parseColor(wing.color, primaryColor);
+    const side = (wing.label || '').includes('right') ? 1 : -1;
+    const ww = (wing.type === 'circle' ? (wing.radius || 15) * 2 : (wing.width || 20)) * scaleU;
+    const wh = (wing.type === 'circle' ? (wing.radius || 15) * 2 : (wing.height || 15)) * scaleU;
+    const wm = new THREE.Mesh(
+      new THREE.BoxGeometry(ww, wh, 0.05),
+      new THREE.MeshStandardMaterial({ color: wc, roughness: 0.5, metalness: 0.2 }),
+    );
+    wm.position.set(side * (baseW * 0.5 + ww * 0.4), bodyCenterY + baseH * 0.15, 0);
+    wm.rotation.z = side * -0.3;
+    wm.castShadow = true;
+    group.add(wm);
+  }
+
+  // UNCATEGORIZED → coordinate fallback
+  for (const feature of parts.other) {
+    const fm = buildFeature3D(feature, visual, baseW, baseH, baseD, 0);
+    if (fm) {
+      fm.position.y += baseH + 0.1;
+      group.add(fm);
+    }
+  }
 
   // Shadow underneath
   const shadowGeo = new THREE.CircleGeometry(baseW * 0.6, 16);
@@ -106,15 +271,68 @@ export function createObstacle3D(scene, obstacleData) {
   return state;
 }
 
-function buildFeature3D(feature, baseW, baseH, baseD) {
+function categorizeFeatures(features) {
+  const parts = {
+    head: null, mane: null, nose: null, mouth: null,
+    eyes: [], pupils: [], ears: [], legs: [], tail: [], wings: [], other: [],
+  };
+  for (const f of features) {
+    const l = (f.label || '').toLowerCase();
+    if (l.includes('pupil')) parts.pupils.push(f);
+    else if (l.includes('eye')) parts.eyes.push(f);
+    else if (l.includes('head') || l.includes('face')) parts.head = f;
+    else if (l.includes('mane')) parts.mane = f;
+    else if (l.includes('nose') || l.includes('snout') || l.includes('beak')) parts.nose = f;
+    else if (l.includes('mouth') || l.includes('jaw') || l.includes('tongue')) parts.mouth = f;
+    else if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) parts.ears.push(f);
+    else if (l.includes('leg') || l.includes('foot') || l.includes('paw') || l.includes('tentacle')) parts.legs.push(f);
+    else if (l.includes('tail')) parts.tail.push(f);
+    else if (l.includes('wing') || l.includes('fin')) parts.wings.push(f);
+    else parts.other.push(f);
+  }
+  return parts;
+}
+
+/**
+ * Determine z-position for a feature based on its label.
+ */
+function getFeatureZ(label, feature, vw, baseD, headRadius3D) {
+  const l = label.toLowerCase();
+  if (l.includes('tail')) return -baseD * 0.4;
+  if (l.includes('wing')) return -baseD * 0.15;
+  if (l.includes('leg') || l.includes('foot') || l.includes('paw')) {
+    const fx = feature.x || 0;
+    const midX = vw / 2;
+    if (l.includes('front') || l.includes('fore')) return baseD * 0.2;
+    if (l.includes('back') || l.includes('hind') || l.includes('rear')) return -baseD * 0.2;
+    return fx < midX ? baseD * 0.2 : -baseD * 0.2;
+  }
+  // Face features: position on the surface of the head sphere
+  const headZ = baseD * 0.45;
+  const surfaceZ = headRadius3D > 0 ? headZ + headRadius3D * 0.85 : baseD * 0.6;
+  if (l.includes('pupil')) return surfaceZ + 0.05;
+  if (l.includes('eye')) return surfaceZ;
+  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return surfaceZ;
+  if (l.includes('head') || l.includes('face')) return headZ;
+  if (l.includes('mane')) return baseD * 0.35;
+  if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) return baseD * 0.35;
+  if (l.includes('shell') || l.includes('armor') || l.includes('back')) return -baseD * 0.3;
+  return baseD * 0.4;
+}
+
+function buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D) {
   const color = parseColor(feature.color, 0x888888);
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.5, metalness: 0.2,
   });
 
-  // Convert 2D coordinates to 3D offsets
-  const scaleX = baseW / 50; // Normalize from ~50px visual space
-  const scaleY = baseH / 45;
+  const vw = visual.width || 50;
+  const vh = visual.height || 45;
+  const scaleX = baseW / vw;
+  const scaleY = baseH / vh;
+  const halfW = vw / 2;
+  const label = (feature.label || '').toLowerCase();
+  const zPos = getFeatureZ(label, feature, vw, baseD, headRadius3D || 0);
 
   switch (feature.type) {
     case 'circle': {
@@ -122,9 +340,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.SphereGeometry(r, 10, 10);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) - 25) * scaleX,  // Center-relative
+        ((feature.x || 0) - halfW) * scaleX,
         ((feature.y || 0)) * -scaleY,
-        baseD * 0.45,  // On the front face
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -136,9 +354,9 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       const geo = new THREE.BoxGeometry(w, h, d);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(
-        ((feature.x || 0) + (feature.width || 10) / 2 - 25) * scaleX,
+        ((feature.x || 0) + (feature.width || 10) / 2 - halfW) * scaleX,
         ((feature.y || 0) + (feature.height || 10) / 2) * -scaleY,
-        baseD * 0.4,
+        zPos,
       );
       mesh.castShadow = true;
       return mesh;
@@ -148,19 +366,19 @@ function buildFeature3D(feature, baseW, baseH, baseD) {
       if (feature.points && feature.points.length >= 3) {
         const shape = new THREE.Shape();
         shape.moveTo(
-          (feature.points[0][0] - 25) * scaleX,
+          (feature.points[0][0] - halfW) * scaleX,
           feature.points[0][1] * -scaleY,
         );
         for (let i = 1; i < feature.points.length; i++) {
           shape.lineTo(
-            (feature.points[i][0] - 25) * scaleX,
+            (feature.points[i][0] - halfW) * scaleX,
             feature.points[i][1] * -scaleY,
           );
         }
         shape.closePath();
         const geo = new THREE.ExtrudeGeometry(shape, { depth: 0.2, bevelEnabled: false });
         const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.z = baseD * 0.4;
+        mesh.position.z = zPos;
         mesh.castShadow = true;
         return mesh;
       }

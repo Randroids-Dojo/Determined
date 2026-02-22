@@ -9,6 +9,7 @@ import {
   STATE_MENU, STATE_WORD_ENTRY, STATE_LOADING, STATE_PLAYING,
   STATE_VICTORY, STATE_LEADERBOARD,
   STATE_LEVEL2_INTRO, STATE_LEVEL2_LOADING, STATE_LEVEL2_PLAYING, STATE_LEVEL2_VICTORY,
+  STATE_ASSETS, STATE_ASSET_DETAIL,
 } from './constants.js';
 import { initInput, pollInput, snapshotKeys, showTouchL1Controls, hideAllTouchControls } from './input.js';
 import {
@@ -30,8 +31,11 @@ import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
   showLevel2Intro, showLevel2Loading, showLevel2Victory,
+  showAssetsScreen, showAssetDetail,
 } from './ui.js';
 import { startLevel2, cleanupLevel2 } from './level2/level2.js';
+import { saveAssets, getAssetList } from './assetStore.js';
+import { startAssetViewer, stopAssetViewer } from './assetViewer.js';
 
 // ── Canvas setup ──
 const canvas = document.getElementById('game-canvas');
@@ -150,7 +154,7 @@ function goToMenu() {
   state = STATE_MENU;
   llmData = null;
   hideAllTouchControls();
-  showMainMenu(goToWordEntry, goToLeaderboard);
+  showMainMenu(goToWordEntry, goToLeaderboard, goToAssets);
 }
 
 function goToWordEntry() {
@@ -173,10 +177,12 @@ async function onWordsSubmitted(submittedWords) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     llmData = data;
+    saveAssets(words, data);
     startGame(data);
   } catch (err) {
     console.warn('LLM generation failed, using fallback:', err);
     llmData = FALLBACK_DATA;
+    saveAssets(words, FALLBACK_DATA);
     startGame(FALLBACK_DATA);
   }
 }
@@ -337,6 +343,54 @@ function scaleDataForLevel2(data) {
   }
 
   return scaled;
+}
+
+// ── Assets transitions ──
+
+function goToAssets() {
+  state = STATE_ASSETS;
+  hideAllTouchControls();
+  const list = getAssetList();
+  showAssetsScreen(list, goToAssetDetail, goToMenu);
+}
+
+function goToAssetDetail(assetItem) {
+  state = STATE_ASSET_DETAIL;
+  showDetailForItem(assetItem);
+}
+
+function showDetailForItem(item) {
+  stopAssetViewer();
+  const { canvas2d, canvas3d } = showAssetDetail(item, () => {
+    stopAssetViewer();
+    goToAssets();
+  }, () => regenerateAsset(item));
+  startAssetViewer(canvas2d, canvas3d, item.entityData);
+}
+
+const TYPE_TO_KEY = { creature: 'obstacle', weapon: 'weapon', environment: 'environment_item' };
+
+async function regenerateAsset(item) {
+  stopAssetViewer();
+  showLoadingScreen();
+
+  try {
+    const resp = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ words: item.words, nocache: true }),
+    });
+
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    saveAssets(item.words, data);
+
+    const newEntityData = data[TYPE_TO_KEY[item.type]];
+    showDetailForItem({ ...item, entityData: newEntityData });
+  } catch (err) {
+    console.warn('Regeneration failed:', err);
+    showDetailForItem(item);
+  }
 }
 
 // ── Main game loop ──
