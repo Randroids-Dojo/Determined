@@ -166,7 +166,7 @@ function categorizeFeatures(features) {
     else if (l.includes('head') || l.includes('face')) parts.head = f;
     else if (l.includes('mane')) parts.mane = f;
     else if (l.includes('nose') || l.includes('snout') || l.includes('beak')) parts.nose = f;
-    else if (l.includes('mouth') || l.includes('jaw')) parts.mouth = f;
+    else if (l.includes('mouth') || l.includes('jaw') || l.includes('tongue')) parts.mouth = f;
     else if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) parts.ears.push(f);
     else if (l.includes('leg') || l.includes('foot') || l.includes('paw') || l.includes('tentacle')) parts.legs.push(f);
     else if (l.includes('tail')) parts.tail.push(f);
@@ -301,6 +301,19 @@ function build3DMesh(visual) {
     );
     nm.position.set(0, headY - headR * 0.3, eyeZ);
     group.add(nm);
+  }
+
+  // === MOUTH / TONGUE (small shape below nose on the head front) ===
+  if (parts.mouth) {
+    const mr = Math.max((parts.mouth.radius || 3) * scaleU, headR * 0.1);
+    const mm = new THREE.Mesh(
+      new THREE.SphereGeometry(mr, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: parseColor(parts.mouth.color, 0x333333), roughness: 0.4, metalness: 0.1,
+      }),
+    );
+    mm.position.set(0, headY - headR * 0.55, eyeZ);
+    group.add(mm);
   }
 
   // === EARS (larger cones so they're visible) ===
