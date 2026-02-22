@@ -61,6 +61,12 @@ export function drawVisual(ctx, visual, x, y, facingLeft = false) {
     ctx.translate(-visual.width, 0);
   }
 
+  // Clip to bounding box so features don't bleed outside
+  const pad = 6; // small margin for outlines/anti-aliasing
+  ctx.beginPath();
+  ctx.rect(-pad, -pad, visual.width + pad * 2, visual.height + pad * 2);
+  ctx.clip();
+
   // Draw base shape
   const baseType = visual.base_shape || 'ellipse';
   if (baseType === 'ellipse') {

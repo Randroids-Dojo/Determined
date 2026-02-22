@@ -16,7 +16,6 @@ export function createObstacle3D(scene, obstacleData) {
   const visual = data.visual || {};
   const primaryColor = parseColor(visual.color_primary, 0xcc3333);
   const secondaryColor = parseColor(visual.color_secondary, 0xff6666);
-  const accentColor = parseColor(visual.color_accent, 0x220000);
 
   // Scale up the 2D visual dimensions to 3D
   const baseW = (visual.width || 50) / 25;  // Normalize to ~2 units
@@ -207,11 +206,6 @@ export function createObstacle3D(scene, obstacleData) {
       group.add(fm);
     }
   }
-
-  // Eye glow
-  const eyeLight = new THREE.PointLight(accentColor, 0.5, 5);
-  eyeLight.position.set(0, headY, headZ);
-  group.add(eyeLight);
 
   // Shadow underneath
   const shadowGeo = new THREE.CircleGeometry(baseW * 0.6, 16);
