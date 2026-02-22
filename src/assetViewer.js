@@ -198,6 +198,10 @@ function build3DMesh(visual) {
     case 'circle':
       bodyGeo = new THREE.SphereGeometry(baseW * 0.5, 16, 16);
       break;
+    case 'ellipse':
+      bodyGeo = new THREE.SphereGeometry(1, 16, 16);
+      bodyGeo.scale(baseW * 0.5, baseH * 0.5, baseD * 0.5);
+      break;
     case 'triangle':
       bodyGeo = new THREE.ConeGeometry(baseW * 0.5, baseH, 3);
       break;
@@ -464,6 +468,22 @@ function buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D) {
       mesh.castShadow = true;
       return mesh;
     }
+    case 'ellipse': {
+      const rx = (feature.radiusX || feature.radius || 5) * scaleX;
+      const ry = (feature.radiusY || feature.radius || 5) * scaleY;
+      const rz = Math.min(rx, ry) * 0.5;
+      const geo = new THREE.SphereGeometry(1, 12, 12);
+      geo.scale(rx, ry, rz);
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(
+        ((feature.x || 0) - halfW) * scaleX,
+        ((feature.y || 0)) * -scaleY,
+        zPos,
+      );
+      mesh.castShadow = true;
+      return mesh;
+    }
+    case 'roundedRect':
     case 'rectangle': {
       const w = (feature.width || 10) * scaleX;
       const h = (feature.height || 10) * scaleY;

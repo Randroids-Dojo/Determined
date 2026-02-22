@@ -62,15 +62,29 @@ export function drawVisual(ctx, visual, x, y, facingLeft = false) {
   }
 
   // Draw base shape
-  drawShape(ctx, {
-    type: visual.base_shape || 'rectangle',
-    x: 0,
-    y: 0,
-    width: visual.width,
-    height: visual.height,
-    radius: Math.min(visual.width, visual.height) / 2,
-    color: visual.color_primary || '#888',
-  });
+  const baseType = visual.base_shape || 'ellipse';
+  if (baseType === 'ellipse') {
+    drawShape(ctx, {
+      type: 'ellipse',
+      x: visual.width / 2,
+      y: visual.height / 2,
+      radiusX: visual.width / 2,
+      radiusY: visual.height / 2,
+      color: visual.color_primary || '#888',
+      label: 'base',
+    });
+  } else {
+    drawShape(ctx, {
+      type: baseType,
+      x: 0,
+      y: 0,
+      width: visual.width,
+      height: visual.height,
+      radius: Math.min(visual.width, visual.height) / 2,
+      color: visual.color_primary || '#888',
+      label: 'base',
+    });
+  }
 
   // Draw features on top, sorted largest-first so small details (eyes, pupils) appear on top
   const sorted = [...visual.features].sort((a, b) => featureArea(b) - featureArea(a));
@@ -85,8 +99,39 @@ export function drawVisual(ctx, visual, x, y, facingLeft = false) {
 function featureArea(f) {
   switch (f.type) {
     case 'circle': return Math.PI * (f.radius || 10) ** 2;
-    case 'rectangle': return (f.width || 20) * (f.height || 20);
+    case 'ellipse': return Math.PI * (f.radiusX || f.radius || 10) * (f.radiusY || f.radius || 10);
+    case 'rectangle':
+    case 'roundedRect': return (f.width || 20) * (f.height || 20);
     default: return 0;
+  }
+}
+
+/** Darken a hex color by a factor (0-1) for outlines. */
+function darkenColor(hex, factor = 0.35) {
+  // Handle 3-char hex (#F00 → #FF0000)
+  let h = hex;
+  const short = h.match(/^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])$/);
+  if (short) h = `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`;
+  const m = h.match(/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/);
+  if (!m) return '#000000';
+  const r = Math.round(parseInt(m[1], 16) * (1 - factor));
+  const g = Math.round(parseInt(m[2], 16) * (1 - factor));
+  const b = Math.round(parseInt(m[3], 16) * (1 - factor));
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+/** Draw a filled shape with an optional outline for definition. */
+function drawFilled(ctx, color, drawPath, outline = true) {
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  drawPath();
+  ctx.fill();
+  if (outline) {
+    ctx.strokeStyle = darkenColor(color);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    drawPath();
+    ctx.stroke();
   }
 }
 
@@ -96,35 +141,67 @@ function drawShape(ctx, shape) {
   ctx.fillStyle = color;
   ctx.strokeStyle = color;
   ctx.lineWidth = shape.lineWidth || 2;
+  // Shapes with label containing "pupil" or "eye" are small details — skip outlines
+  const isDetail = /pupil/i.test(shape.label || '');
 
   switch (shape.type) {
     case 'circle':
-      ctx.beginPath();
-      ctx.arc(shape.x || 0, shape.y || 0, shape.radius || 10, 0, Math.PI * 2);
-      ctx.fill();
+      drawFilled(ctx, color, () => {
+        ctx.arc(shape.x || 0, shape.y || 0, shape.radius || 10, 0, Math.PI * 2);
+      }, !isDetail);
       break;
 
-    case 'rectangle':
-      ctx.fillRect(
-        shape.x || 0,
-        shape.y || 0,
-        shape.width || 20,
-        shape.height || 20,
-      );
+    case 'ellipse': {
+      const rx = shape.radiusX || shape.radius || 10;
+      const ry = shape.radiusY || shape.radius || 10;
+      drawFilled(ctx, color, () => {
+        ctx.ellipse(shape.x || 0, shape.y || 0, rx, ry, shape.rotation || 0, 0, Math.PI * 2);
+      }, !isDetail);
       break;
+    }
+
+    case 'rectangle':
+      drawFilled(ctx, color, () => {
+        ctx.rect(shape.x || 0, shape.y || 0, shape.width || 20, shape.height || 20);
+      }, !isDetail);
+      break;
+
+    case 'roundedRect': {
+      const rx2 = shape.x || 0;
+      const ry2 = shape.y || 0;
+      const rw = shape.width || 20;
+      const rh = shape.height || 20;
+      const cr = Math.min(shape.cornerRadius || 4, rw / 2, rh / 2);
+      drawFilled(ctx, color, () => {
+        ctx.moveTo(rx2 + cr, ry2);
+        ctx.lineTo(rx2 + rw - cr, ry2);
+        ctx.arcTo(rx2 + rw, ry2, rx2 + rw, ry2 + cr, cr);
+        ctx.lineTo(rx2 + rw, ry2 + rh - cr);
+        ctx.arcTo(rx2 + rw, ry2 + rh, rx2 + rw - cr, ry2 + rh, cr);
+        ctx.lineTo(rx2 + cr, ry2 + rh);
+        ctx.arcTo(rx2, ry2 + rh, rx2, ry2 + rh - cr, cr);
+        ctx.lineTo(rx2, ry2 + cr);
+        ctx.arcTo(rx2, ry2, rx2 + cr, ry2, cr);
+        ctx.closePath();
+      }, true);
+      break;
+    }
 
     case 'triangle':
       if (shape.points && shape.points.length === 3) {
-        ctx.beginPath();
-        ctx.moveTo(shape.points[0][0], shape.points[0][1]);
-        ctx.lineTo(shape.points[1][0], shape.points[1][1]);
-        ctx.lineTo(shape.points[2][0], shape.points[2][1]);
-        ctx.closePath();
-        ctx.fill();
+        drawFilled(ctx, color, () => {
+          ctx.moveTo(shape.points[0][0], shape.points[0][1]);
+          ctx.lineTo(shape.points[1][0], shape.points[1][1]);
+          ctx.lineTo(shape.points[2][0], shape.points[2][1]);
+          ctx.closePath();
+        }, true);
       }
       break;
 
     case 'line':
+      ctx.strokeStyle = color;
+      ctx.lineWidth = shape.lineWidth || 2;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(shape.x1 || 0, shape.y1 || 0);
       ctx.lineTo(shape.x2 || 20, shape.y2 || 20);
@@ -132,6 +209,9 @@ function drawShape(ctx, shape) {
       break;
 
     case 'arc':
+      ctx.strokeStyle = color;
+      ctx.lineWidth = shape.lineWidth || 2;
+      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.arc(
         shape.x || 0,
@@ -145,18 +225,19 @@ function drawShape(ctx, shape) {
 
     case 'polygon':
       if (shape.points && shape.points.length >= 3) {
-        ctx.beginPath();
-        ctx.moveTo(shape.points[0][0], shape.points[0][1]);
-        for (let i = 1; i < shape.points.length; i++) {
-          ctx.lineTo(shape.points[i][0], shape.points[i][1]);
-        }
-        ctx.closePath();
-        ctx.fill();
+        drawFilled(ctx, color, () => {
+          ctx.moveTo(shape.points[0][0], shape.points[0][1]);
+          for (let i = 1; i < shape.points.length; i++) {
+            ctx.lineTo(shape.points[i][0], shape.points[i][1]);
+          }
+          ctx.closePath();
+        }, true);
       }
       break;
 
     default:
       // Unknown shape — draw a fallback rectangle
+      ctx.fillStyle = color;
       ctx.fillRect(shape.x || 0, shape.y || 0, shape.width || 20, shape.height || 20);
       break;
   }

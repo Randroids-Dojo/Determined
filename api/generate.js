@@ -26,14 +26,21 @@ const RATE_WINDOW_SEC = 3600; // 1 hour
 
 const FEATURE_SHAPE_DOCS = `
 Feature shape types and their required properties:
-  - circle:    { "type":"circle",    "label":"string", "x":number, "y":number, "radius":number, "color":"hex" }
-  - rectangle: { "type":"rectangle", "label":"string", "x":number, "y":number, "width":number, "height":number, "color":"hex" }
-  - triangle:  { "type":"triangle",  "label":"string", "points":[[x1,y1],[x2,y2],[x3,y3]], "color":"hex" }
-  - line:      { "type":"line",      "label":"string", "x1":number, "y1":number, "x2":number, "y2":number, "lineWidth":1-10, "color":"hex" }
-  - arc:       { "type":"arc",       "label":"string", "x":number, "y":number, "radius":number, "startAngle":radians, "endAngle":radians, "color":"hex" }
-  - polygon:   { "type":"polygon",   "label":"string", "points":[[x1,y1],[x2,y2],...], "color":"hex" }
+  - circle:      { "type":"circle",      "label":"string", "x":number, "y":number, "radius":number, "color":"hex" }
+  - ellipse:     { "type":"ellipse",     "label":"string", "x":number, "y":number, "radiusX":number, "radiusY":number, "rotation":radians(default 0), "color":"hex" }
+  - rectangle:   { "type":"rectangle",   "label":"string", "x":number, "y":number, "width":number, "height":number, "color":"hex" }
+  - roundedRect: { "type":"roundedRect", "label":"string", "x":number, "y":number, "width":number, "height":number, "cornerRadius":number, "color":"hex" }
+  - triangle:    { "type":"triangle",    "label":"string", "points":[[x1,y1],[x2,y2],[x3,y3]], "color":"hex" }
+  - line:        { "type":"line",        "label":"string", "x1":number, "y1":number, "x2":number, "y2":number, "lineWidth":1-10, "color":"hex" }
+  - arc:         { "type":"arc",         "label":"string", "x":number, "y":number, "radius":number, "startAngle":radians, "endAngle":radians, "color":"hex" }
+  - polygon:     { "type":"polygon",     "label":"string", "points":[[x1,y1],[x2,y2],...], "color":"hex" }
 
-All x/y positions are RELATIVE to the entity's top-left corner (0,0). The base_shape fills from (0,0) to (width,height).`;
+SHAPE TIPS:
+- Use "ellipse" for organic shapes (bodies, heads, paws) — it looks much more natural than circle/rectangle.
+- Use "roundedRect" for limbs and thick body parts — softer than plain rectangles.
+- All shapes automatically get a subtle dark outline for definition, so parts are visually distinct even with similar colors.
+- x/y for circle and ellipse is the CENTER of the shape. x/y for rectangle and roundedRect is the TOP-LEFT corner.
+- All x/y positions are RELATIVE to the entity's top-left corner (0,0). The base_shape fills from (0,0) to (width,height).`;
 
 const JSON_SCHEMA = `{
   "obstacle": {
@@ -47,13 +54,13 @@ const JSON_SCHEMA = `{
     "aggro_range": "number 80-200",
     "weakness": "string - a damage type",
     "visual": {
-      "base_shape": "circle | rectangle | triangle",
+      "base_shape": "ellipse | circle | rectangle | triangle",
       "width": "number 30-80",
       "height": "number 30-80",
       "color_primary": "hex color - body color",
       "color_secondary": "hex color",
       "color_accent": "hex color",
-      "features": "array of 8-12 shape objects (see feature shape docs)"
+      "features": "array of 10-14 shape objects (see feature shape docs)"
     }
   },
   "weapon": {
@@ -107,26 +114,38 @@ const JSON_SCHEMA = `{
 const VISUAL_EXAMPLE = `
 Example: if the creature is "lion", a good visual would be:
 {
-  "base_shape": "rectangle", "width": 70, "height": 55,
+  "base_shape": "ellipse", "width": 70, "height": 50,
   "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
   "features": [
-    { "type": "circle", "label": "mane", "x": 18, "y": 3, "radius": 26, "color": "#B87A10" },
-    { "type": "circle", "label": "head", "x": 18, "y": 6, "radius": 16, "color": "#D4A030" },
-    { "type": "circle", "label": "eye_left", "x": 11, "y": 3, "radius": 3, "color": "#FFFFFF" },
-    { "type": "circle", "label": "eye_right", "x": 25, "y": 3, "radius": 3, "color": "#FFFFFF" },
-    { "type": "circle", "label": "pupil_left", "x": 12, "y": 3, "radius": 1.5, "color": "#1A1000" },
-    { "type": "circle", "label": "pupil_right", "x": 26, "y": 3, "radius": 1.5, "color": "#1A1000" },
-    { "type": "triangle", "label": "ear_left", "points": [[4,-2],[0,-14],[10,-8]], "color": "#B87A10" },
-    { "type": "triangle", "label": "ear_right", "points": [[32,-2],[36,-14],[26,-8]], "color": "#B87A10" },
-    { "type": "circle", "label": "nose", "x": 18, "y": 12, "radius": 3, "color": "#3A2000" },
-    { "type": "arc", "label": "mouth", "x": 18, "y": 15, "radius": 5, "startAngle": 0, "endAngle": 3.14, "color": "#3A2000" },
-    { "type": "rectangle", "label": "front_leg_left", "x": 10, "y": 30, "width": 8, "height": 22, "color": "#C08A20" },
-    { "type": "rectangle", "label": "front_leg_right", "x": 46, "y": 30, "width": 8, "height": 22, "color": "#C08A20" },
-    { "type": "line", "label": "tail", "x1": 65, "y1": 20, "x2": 78, "y2": 8, "lineWidth": 3, "color": "#B87A10" },
-    { "type": "circle", "label": "tail_tuft", "x": 78, "y": 6, "radius": 5, "color": "#8B5E0A" }
+    { "type": "ellipse", "label": "body", "x": 38, "y": 28, "radiusX": 28, "radiusY": 18, "color": "#D4A030" },
+    { "type": "ellipse", "label": "mane", "x": 14, "y": 8, "radiusX": 22, "radiusY": 20, "color": "#B87A10" },
+    { "type": "ellipse", "label": "head", "x": 14, "y": 10, "radiusX": 14, "radiusY": 13, "color": "#D4A030" },
+    { "type": "ellipse", "label": "snout", "x": 14, "y": 17, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
+    { "type": "circle", "label": "eye_left", "x": 7, "y": 7, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "eye_right", "x": 21, "y": 7, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "pupil_left", "x": 8, "y": 7, "radius": 1.8, "color": "#1A1000" },
+    { "type": "circle", "label": "pupil_right", "x": 22, "y": 7, "radius": 1.8, "color": "#1A1000" },
+    { "type": "triangle", "label": "ear_left", "points": [[1,-2],[-3,-14],[7,-6]], "color": "#B87A10" },
+    { "type": "triangle", "label": "ear_right", "points": [[27,-2],[31,-14],[21,-6]], "color": "#B87A10" },
+    { "type": "ellipse", "label": "nose", "x": 14, "y": 15, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
+    { "type": "arc", "label": "mouth", "x": 14, "y": 19, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
+    { "type": "roundedRect", "label": "front_leg_left", "x": 14, "y": 36, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "front_leg_right", "x": 42, "y": 36, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "back_leg_left", "x": 22, "y": 38, "width": 8, "height": 16, "cornerRadius": 3, "color": "#B87A10" },
+    { "type": "roundedRect", "label": "back_leg_right", "x": 50, "y": 38, "width": 8, "height": 16, "cornerRadius": 3, "color": "#B87A10" },
+    { "type": "line", "label": "tail", "x1": 65, "y1": 22, "x2": 78, "y2": 10, "lineWidth": 3, "color": "#B87A10" },
+    { "type": "circle", "label": "tail_tuft", "x": 79, "y": 8, "radius": 5, "color": "#8B5E0A" }
   ]
 }
-IMPORTANT: The creature visual MUST include these body parts: head, eyes (2 circles + 2 pupils), body/torso, and at least 2 legs. Also include distinguishing features for the creature (e.g. mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, tail if relevant). Position legs at the bottom of the base shape. The result should be an immediately recognizable silhouette of the named creature.`;
+KEY ANATOMY RULES:
+- ALWAYS use "ellipse" for organic body parts (body, head, snout/muzzle, paws). Ellipses create natural, rounded shapes.
+- ALWAYS use "roundedRect" for legs and limbs instead of plain rectangles. Set cornerRadius to 3-5 for a smooth look.
+- The base_shape is just a bounding box hint — the REAL body shape should be an ellipse feature labeled "body".
+- Layer from back to front: body (largest) → head → facial features → details. The renderer draws largest shapes first.
+- Creatures MUST include: body ellipse, head, eyes (2 circles + 2 pupils), nose/snout, at least 2 legs (4 for quadrupeds).
+- Add creature-specific features that make it instantly recognizable: mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, fins for fish, stripes/spots as extra shapes.
+- Legs should be positioned at the BOTTOM of the body ellipse, spread apart to suggest a stance.
+- Use 3-4 related colors: a primary for the body, a slightly darker shade for legs/mane, a lighter shade for belly/snout, and a dark accent for nose/pupils/outlines.`;
 
 function buildPrompt(words) {
   return `You are a creative game designer for an absurdist action game called "Determined".
@@ -145,13 +164,15 @@ ${VISUAL_EXAMPLE}
 
 Rules:
 - The creature's visual MUST be recognizable as a "${words.creature}". Use features to build distinctive body parts (head, eyes, ears, limbs, tail, horns, wings, etc.) that look like the named creature. Choose colors appropriate to the creature.
+- PREFER "ellipse" for all organic/curved parts (body, head, snout, paws, cheeks). PREFER "roundedRect" for limbs. AVOID plain "rectangle" for body parts — it looks boxy and unnatural.
 - Make it fun, absurd, and creative. Lean into humor.
 - The creature's weakness should relate to the weapon's damage type when it makes sense.
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
-- Use 8-12 features per creature to build a recognizable shape. Each feature should represent a distinct body part with a descriptive label. ALWAYS include: head, eyes (with pupils), body, and legs. Add creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
+- Use 10-14 features per creature. The FIRST feature should be a large "body" ellipse. Then add head, eyes (with pupils), nose, mouth, ears, legs (use roundedRect with cornerRadius 3-5), and creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
+- Use a color palette: primary body color, slightly darker shade for limbs, lighter shade for belly/snout, dark accent for nose/pupils.
 - The environment item's visual is a small 20-30px pickup icon. Use 2-5 features to build a simple, recognizable symbol of "${words.environment}" (e.g. a lightning bolt, snowflake, flame, raindrop, tornado shape). Keep it compact.
 - The environment item's visual_effect.style controls the targeted animation when the item is activated. Choose the best match for "${words.environment}": "bolt" for lightning/electricity/energy, "flames" for fire/heat/lava/magma, "freeze" for ice/snow/cold/frost, "wind" for tornado/hurricane/gust/storm, "explosion" for earthquake/shockwave/meteor/bomb, "beam" for laser/light/solar/radiation, "rain" for rain/hail/acid/flood.
-- Position features relative to the base shape (0,0 is top-left, width/height is bottom-right).
+- Position features relative to the base shape (0,0 is top-left, width/height is bottom-right). Remember: circle/ellipse x,y is the CENTER, rectangle/roundedRect x,y is the TOP-LEFT.
 - All numbers must be within the specified ranges.
 - Color values must be valid hex colors (e.g. "#FF0000").
 - Return ONLY valid JSON, no markdown or explanation.`;
@@ -166,13 +187,15 @@ const FALLBACK = {
     health: 80, attack_damage: 10, attack_pattern: 'melee',
     attack_cooldown: 1.5, movement_speed: 2, aggro_range: 120, weakness: 'sharp',
     visual: {
-      base_shape: 'circle', width: 50, height: 45,
+      base_shape: 'ellipse', width: 50, height: 45,
       color_primary: '#CC3333', color_secondary: '#FF6666', color_accent: '#220000',
       features: [
-        { type: 'circle', x: 15, y: -8, radius: 5, color: '#FFFFFF', label: 'eye_left' },
-        { type: 'circle', x: 35, y: -8, radius: 5, color: '#FFFFFF', label: 'eye_right' },
-        { type: 'circle', x: 15, y: -8, radius: 2, color: '#220000', label: 'pupil_left' },
-        { type: 'circle', x: 35, y: -8, radius: 2, color: '#220000', label: 'pupil_right' },
+        { type: 'ellipse', x: 25, y: 22, radiusX: 24, radiusY: 20, color: '#CC3333', label: 'body' },
+        { type: 'circle', x: 15, y: 10, radius: 5, color: '#FFFFFF', label: 'eye_left' },
+        { type: 'circle', x: 35, y: 10, radius: 5, color: '#FFFFFF', label: 'eye_right' },
+        { type: 'circle', x: 16, y: 10, radius: 2.5, color: '#220000', label: 'pupil_left' },
+        { type: 'circle', x: 36, y: 10, radius: 2.5, color: '#220000', label: 'pupil_right' },
+        { type: 'arc', x: 25, y: 20, radius: 6, startAngle: 0.2, endAngle: 2.94, color: '#220000', label: 'mouth' },
       ],
     },
   },
@@ -303,7 +326,7 @@ async function callGroq(words) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 2500,
+      max_tokens: 3000,
     }),
   });
 
@@ -352,14 +375,18 @@ function oneOf(val, allowed, fallback) {
 /** Sanitize a single visual feature object. */
 function sanitizeFeature(f) {
   if (!f || typeof f !== 'object') return null;
-  const validTypes = ['circle', 'rectangle', 'triangle', 'line', 'arc', 'polygon'];
+  const validTypes = ['circle', 'ellipse', 'rectangle', 'roundedRect', 'triangle', 'line', 'arc', 'polygon'];
   const type = oneOf(f.type, validTypes, 'rectangle');
   const base = { type, label: typeof f.label === 'string' ? f.label : '', color: hexColor(f.color, '#888888') };
   switch (type) {
     case 'circle':
       return { ...base, x: num(f.x, 0), y: num(f.y, 0), radius: clampNum(f.radius, 1, 200, 10) };
+    case 'ellipse':
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), radiusX: clampNum(f.radiusX, 1, 200, 10), radiusY: clampNum(f.radiusY, 1, 200, 10), rotation: num(f.rotation, 0) };
     case 'rectangle':
       return { ...base, x: num(f.x, 0), y: num(f.y, 0), width: clampNum(f.width, 1, 200, 20), height: clampNum(f.height, 1, 200, 20) };
+    case 'roundedRect':
+      return { ...base, x: num(f.x, 0), y: num(f.y, 0), width: clampNum(f.width, 1, 200, 20), height: clampNum(f.height, 1, 200, 20), cornerRadius: clampNum(f.cornerRadius, 1, 50, 4) };
     case 'triangle':
     case 'polygon':
       if (Array.isArray(f.points) && f.points.length >= 3) {
@@ -393,7 +420,7 @@ function sanitizeData(data) {
     o.aggro_range = clampNum(o.aggro_range, 80, 200, 120);
     o.weakness = typeof o.weakness === 'string' ? o.weakness.slice(0, 30) : 'sharp';
     if (o.visual && typeof o.visual === 'object') {
-      o.visual.base_shape = oneOf(o.visual.base_shape, ['circle', 'rectangle', 'triangle'], 'circle');
+      o.visual.base_shape = oneOf(o.visual.base_shape, ['circle', 'ellipse', 'rectangle', 'triangle'], 'ellipse');
       o.visual.width = clampNum(o.visual.width, 30, 80, 50);
       o.visual.height = clampNum(o.visual.height, 30, 80, 50);
       o.visual.color_primary = hexColor(o.visual.color_primary, '#CC3333');
@@ -464,7 +491,7 @@ function sanitizeData(data) {
       e.visual_effect = { type: 'flash', style: 'explosion', color_primary: '#FFFFFF', color_secondary: '#FFFF00', description: '' };
     }
     if (e.visual && typeof e.visual === 'object') {
-      e.visual.base_shape = oneOf(e.visual.base_shape, ['circle', 'rectangle', 'triangle'], 'circle');
+      e.visual.base_shape = oneOf(e.visual.base_shape, ['circle', 'ellipse', 'rectangle', 'triangle'], 'circle');
       e.visual.width = clampNum(e.visual.width, 16, 40, 24);
       e.visual.height = clampNum(e.visual.height, 16, 40, 24);
       e.visual.color_primary = hexColor(e.visual.color_primary, '#FFD700');
