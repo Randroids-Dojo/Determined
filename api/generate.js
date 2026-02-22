@@ -125,8 +125,8 @@ Example: if the creature is "lion", a good visual would be:
   "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
   "features": [
     { "type": "ellipse", "label": "body", "x": 40, "y": 24, "radiusX": 26, "radiusY": 15, "color": "#D4A030" },
-    { "type": "circle", "label": "mane", "x": 16, "y": 14, "radius": 20, "color": "#B87A10" },
-    { "type": "circle", "label": "head", "x": 16, "y": 16, "radius": 14, "color": "#DAA830" },
+    { "type": "circle", "label": "mane", "x": 16, "y": 14, "radius": 22, "color": "#8B5E10" },
+    { "type": "circle", "label": "head", "x": 16, "y": 16, "radius": 14, "color": "#E0B040" },
     { "type": "circle", "label": "eye_left", "x": 10, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
     { "type": "circle", "label": "eye_right", "x": 20, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
     { "type": "circle", "label": "pupil_left", "x": 11, "y": 13, "radius": 2, "color": "#1A1000" },
@@ -154,6 +154,7 @@ KEY ANATOMY RULES:
 - The base_shape is a bounding hint — the REAL body shape is the large "body" ellipse feature.
 - Legs should be positioned at the BOTTOM of the body (y ≈ 34+ for a 50px tall creature), spread evenly under the body.
 - Use 3-4 related colors: primary for body, slightly darker for legs/back features, lighter for belly/snout, dark accent for nose/pupils.
+- IMPORTANT: When features overlap (like a mane behind a head), use clearly DIFFERENT colors so both are visible. The mane must be noticeably darker or lighter than the head — if they're too similar, the mane disappears.
 - For EARS: use short, wide triangles (base ≈ 8px, height ≈ 10px) sitting on top of the head. NOT tall narrow spikes — those look like antennae.
 - Add creature-specific features: mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, fins for fish, stripes as extra ellipses.`;
 
