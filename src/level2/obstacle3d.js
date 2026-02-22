@@ -39,10 +39,22 @@ export function createObstacle3D(scene, obstacleData) {
   bodyMesh.castShadow = true;
   group.add(bodyMesh);
 
+  // Find head feature radius for positioning face features on its surface
+  let headRadius3D = 0;
+  if (visual.features) {
+    for (const f of visual.features) {
+      const lbl = (f.label || '').toLowerCase();
+      if (lbl.includes('head') && f.type === 'circle') {
+        headRadius3D = (f.radius || 10) * (baseW / (visual.width || 50));
+        break;
+      }
+    }
+  }
+
   // Build features from visual description
   if (visual.features && visual.features.length > 0) {
     for (const feature of visual.features) {
-      const featureMesh = buildFeature3D(feature, visual, baseW, baseH, baseD);
+      const featureMesh = buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D);
       if (featureMesh) {
         featureMesh.position.y += baseH * 0.5 + 0.1;
         group.add(featureMesh);
@@ -109,7 +121,7 @@ export function createObstacle3D(scene, obstacleData) {
 /**
  * Determine z-position for a feature based on its label.
  */
-function getFeatureZ(label, feature, vw, baseD) {
+function getFeatureZ(label, feature, vw, baseD, headRadius3D) {
   const l = label.toLowerCase();
   if (l.includes('tail')) return -baseD * 0.4;
   if (l.includes('wing')) return -baseD * 0.15;
@@ -120,17 +132,20 @@ function getFeatureZ(label, feature, vw, baseD) {
     if (l.includes('back') || l.includes('hind') || l.includes('rear')) return -baseD * 0.2;
     return fx < midX ? baseD * 0.2 : -baseD * 0.2;
   }
-  if (l.includes('pupil')) return baseD * 0.52;
-  if (l.includes('eye')) return baseD * 0.5;
-  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return baseD * 0.5;
-  if (l.includes('head') || l.includes('face')) return baseD * 0.45;
+  // Face features: position on the surface of the head sphere
+  const headZ = baseD * 0.45;
+  const surfaceZ = headRadius3D > 0 ? headZ + headRadius3D * 0.85 : baseD * 0.6;
+  if (l.includes('pupil')) return surfaceZ + 0.05;
+  if (l.includes('eye')) return surfaceZ;
+  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return surfaceZ;
+  if (l.includes('head') || l.includes('face')) return headZ;
   if (l.includes('mane')) return baseD * 0.35;
   if (l.includes('ear') || l.includes('horn') || l.includes('antenna')) return baseD * 0.35;
   if (l.includes('shell') || l.includes('armor') || l.includes('back')) return -baseD * 0.3;
   return baseD * 0.4;
 }
 
-function buildFeature3D(feature, visual, baseW, baseH, baseD) {
+function buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D) {
   const color = parseColor(feature.color, 0x888888);
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.5, metalness: 0.2,
@@ -142,7 +157,7 @@ function buildFeature3D(feature, visual, baseW, baseH, baseD) {
   const scaleY = baseH / vh;
   const halfW = vw / 2;
   const label = (feature.label || '').toLowerCase();
-  const zPos = getFeatureZ(label, feature, vw, baseD);
+  const zPos = getFeatureZ(label, feature, vw, baseD, headRadius3D || 0);
 
   switch (feature.type) {
     case 'circle': {

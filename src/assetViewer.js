@@ -65,7 +65,7 @@ export function startAssetViewer(canvas2d, canvas3d, entityData) {
   const bcenter = bbox.getCenter(new THREE.Vector3());
   const maxDim = Math.max(bsize.x, bsize.y, bsize.z);
   const fovRad = camera.fov * (Math.PI / 180);
-  const camDist = (maxDim / (2 * Math.tan(fovRad / 2))) + 1.5;
+  const camDist = (maxDim / (2 * Math.tan(fovRad / 2))) + 2.5;
   camera.position.set(0, bcenter.y, Math.max(camDist, 4));
 
   // Ground plane sized to model
@@ -189,10 +189,22 @@ function build3DMesh(visual) {
   bodyMesh.castShadow = true;
   group.add(bodyMesh);
 
+  // Find head feature radius for positioning face features on its surface
+  let headRadius3D = 0;
+  if (visual.features) {
+    for (const f of visual.features) {
+      const lbl = (f.label || '').toLowerCase();
+      if (lbl.includes('head') && f.type === 'circle') {
+        headRadius3D = (f.radius || 10) * (baseW / (visual.width || 50));
+        break;
+      }
+    }
+  }
+
   // Build features from visual description
   if (visual.features && visual.features.length > 0) {
     for (const feature of visual.features) {
-      const mesh = buildFeature3D(feature, visual, baseW, baseH, baseD);
+      const mesh = buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D);
       if (mesh) {
         mesh.position.y += baseH * 0.5 + 0.1;
         group.add(mesh);
@@ -213,7 +225,7 @@ function build3DMesh(visual) {
  * Determine z-position for a feature based on its label.
  * Spreads features in depth instead of piling everything on the front face.
  */
-function getFeatureZ(label, feature, vw, baseD) {
+function getFeatureZ(label, feature, vw, baseD, headRadius3D) {
   const l = label.toLowerCase();
 
   // Tail goes behind the body
@@ -232,15 +244,15 @@ function getFeatureZ(label, feature, vw, baseD) {
     return fx < midX ? baseD * 0.2 : -baseD * 0.2;
   }
 
-  // Eyes and pupils: slightly in front of head
-  if (l.includes('pupil')) return baseD * 0.52;
-  if (l.includes('eye')) return baseD * 0.5;
-
-  // Nose, mouth: on front of head
-  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return baseD * 0.5;
+  // Face features: position on the surface of the head sphere
+  const headZ = baseD * 0.45;
+  const surfaceZ = headRadius3D > 0 ? headZ + headRadius3D * 0.85 : baseD * 0.6;
+  if (l.includes('pupil')) return surfaceZ + 0.05;
+  if (l.includes('eye')) return surfaceZ;
+  if (l.includes('nose') || l.includes('mouth') || l.includes('beak') || l.includes('snout')) return surfaceZ;
 
   // Head: at the front
-  if (l.includes('head') || l.includes('face')) return baseD * 0.45;
+  if (l.includes('head') || l.includes('face')) return headZ;
 
   // Mane wraps around head
   if (l.includes('mane')) return baseD * 0.35;
@@ -255,7 +267,7 @@ function getFeatureZ(label, feature, vw, baseD) {
   return baseD * 0.4;
 }
 
-function buildFeature3D(feature, visual, baseW, baseH, baseD) {
+function buildFeature3D(feature, visual, baseW, baseH, baseD, headRadius3D) {
   const color = parseColor(feature.color, 0x888888);
   const mat = new THREE.MeshStandardMaterial({
     color, roughness: 0.5, metalness: 0.2,
@@ -267,7 +279,7 @@ function buildFeature3D(feature, visual, baseW, baseH, baseD) {
   const scaleY = baseH / vh;
   const halfW = vw / 2;
   const label = (feature.label || '').toLowerCase();
-  const zPos = getFeatureZ(label, feature, vw, baseD);
+  const zPos = getFeatureZ(label, feature, vw, baseD, headRadius3D || 0);
 
   switch (feature.type) {
     case 'circle': {
