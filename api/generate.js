@@ -60,7 +60,7 @@ const JSON_SCHEMA = `{
       "color_primary": "hex color - body color",
       "color_secondary": "hex color",
       "color_accent": "hex color",
-      "features": "array of 10-14 shape objects (see feature shape docs)"
+      "features": "array of 12-18 shape objects (see feature shape docs)"
     }
   },
   "weapon": {
@@ -112,40 +112,49 @@ const JSON_SCHEMA = `{
 }`;
 
 const VISUAL_EXAMPLE = `
+COORDINATE GUIDE (for a creature with width:70, height:50):
+- (0,0) is TOP-LEFT of bounding box. (70,50) is BOTTOM-RIGHT.
+- For circle/ellipse, x,y is the CENTER. For rectangle/roundedRect, x,y is the TOP-LEFT corner.
+- Side-view layout for quadrupeds: HEAD on the LEFT (x ≈ 10-20), BODY in the CENTER (x ≈ 35-40), TAIL on the RIGHT (x ≈ 60-75). LEGS at the BOTTOM (y ≈ 34-50).
+- HEAD should be LARGE (radius 12-16) — this is a game sprite, not a realistic drawing. Big expressive heads look better.
+- EYES should be placed ON the head (inside the head circle/ellipse at same y or slightly above head center).
+
 Example: if the creature is "lion", a good visual would be:
 {
   "base_shape": "ellipse", "width": 70, "height": 50,
   "color_primary": "#D4A030", "color_secondary": "#C08A20", "color_accent": "#3A2000",
   "features": [
-    { "type": "ellipse", "label": "body", "x": 38, "y": 28, "radiusX": 28, "radiusY": 18, "color": "#D4A030" },
-    { "type": "ellipse", "label": "mane", "x": 14, "y": 8, "radiusX": 22, "radiusY": 20, "color": "#B87A10" },
-    { "type": "ellipse", "label": "head", "x": 14, "y": 10, "radiusX": 14, "radiusY": 13, "color": "#D4A030" },
-    { "type": "ellipse", "label": "snout", "x": 14, "y": 17, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
-    { "type": "circle", "label": "eye_left", "x": 7, "y": 7, "radius": 3.5, "color": "#FFFFFF" },
-    { "type": "circle", "label": "eye_right", "x": 21, "y": 7, "radius": 3.5, "color": "#FFFFFF" },
-    { "type": "circle", "label": "pupil_left", "x": 8, "y": 7, "radius": 1.8, "color": "#1A1000" },
-    { "type": "circle", "label": "pupil_right", "x": 22, "y": 7, "radius": 1.8, "color": "#1A1000" },
-    { "type": "triangle", "label": "ear_left", "points": [[1,-2],[-3,-14],[7,-6]], "color": "#B87A10" },
-    { "type": "triangle", "label": "ear_right", "points": [[27,-2],[31,-14],[21,-6]], "color": "#B87A10" },
-    { "type": "ellipse", "label": "nose", "x": 14, "y": 15, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
-    { "type": "arc", "label": "mouth", "x": 14, "y": 19, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
-    { "type": "roundedRect", "label": "front_leg_left", "x": 14, "y": 36, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
-    { "type": "roundedRect", "label": "front_leg_right", "x": 42, "y": 36, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
-    { "type": "roundedRect", "label": "back_leg_left", "x": 22, "y": 38, "width": 8, "height": 16, "cornerRadius": 3, "color": "#B87A10" },
-    { "type": "roundedRect", "label": "back_leg_right", "x": 50, "y": 38, "width": 8, "height": 16, "cornerRadius": 3, "color": "#B87A10" },
-    { "type": "line", "label": "tail", "x1": 65, "y1": 22, "x2": 78, "y2": 10, "lineWidth": 3, "color": "#B87A10" },
-    { "type": "circle", "label": "tail_tuft", "x": 79, "y": 8, "radius": 5, "color": "#8B5E0A" }
+    { "type": "ellipse", "label": "body", "x": 40, "y": 24, "radiusX": 26, "radiusY": 15, "color": "#D4A030" },
+    { "type": "circle", "label": "mane", "x": 16, "y": 14, "radius": 20, "color": "#B87A10" },
+    { "type": "circle", "label": "head", "x": 16, "y": 16, "radius": 14, "color": "#DAA830" },
+    { "type": "circle", "label": "eye_left", "x": 10, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "eye_right", "x": 20, "y": 13, "radius": 3.5, "color": "#FFFFFF" },
+    { "type": "circle", "label": "pupil_left", "x": 11, "y": 13, "radius": 2, "color": "#1A1000" },
+    { "type": "circle", "label": "pupil_right", "x": 21, "y": 13, "radius": 2, "color": "#1A1000" },
+    { "type": "ellipse", "label": "snout", "x": 15, "y": 22, "radiusX": 7, "radiusY": 5, "color": "#E0B848" },
+    { "type": "ellipse", "label": "nose", "x": 15, "y": 20, "radiusX": 3, "radiusY": 2, "color": "#3A2000" },
+    { "type": "arc", "label": "mouth", "x": 15, "y": 24, "radius": 4, "startAngle": 0.2, "endAngle": 2.94, "color": "#3A2000" },
+    { "type": "triangle", "label": "ear_left", "points": [[3,2],[-1,-10],[9,-3]], "color": "#C09020" },
+    { "type": "triangle", "label": "ear_right", "points": [[27,2],[31,-10],[21,-3]], "color": "#C09020" },
+    { "type": "roundedRect", "label": "front_leg_left", "x": 20, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "front_leg_right", "x": 32, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#B87A10" },
+    { "type": "roundedRect", "label": "back_leg_left", "x": 48, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#C08A20" },
+    { "type": "roundedRect", "label": "back_leg_right", "x": 58, "y": 34, "width": 9, "height": 18, "cornerRadius": 4, "color": "#B87A10" },
+    { "type": "line", "label": "tail", "x1": 64, "y1": 18, "x2": 76, "y2": 6, "lineWidth": 3, "color": "#B87A10" },
+    { "type": "circle", "label": "tail_tuft", "x": 77, "y": 5, "radius": 5, "color": "#8B5E0A" }
   ]
 }
 KEY ANATOMY RULES:
+- This is a SIDE-VIEW sprite. Head on the LEFT, body in the CENTER, tail on the RIGHT. Legs at the BOTTOM.
+- Make the HEAD BIG — radius 12-16 for a 70px wide creature. Game sprites need oversized, expressive heads.
+- Eyes go ON the head: their x,y should be INSIDE the head circle/ellipse, at the same y or slightly above the head center.
 - ALWAYS use "ellipse" for organic body parts (body, head, snout/muzzle, paws). Ellipses create natural, rounded shapes.
-- ALWAYS use "roundedRect" for legs and limbs instead of plain rectangles. Set cornerRadius to 3-5 for a smooth look.
-- The base_shape is just a bounding box hint — the REAL body shape should be an ellipse feature labeled "body".
-- Layer from back to front: body (largest) → head → facial features → details. The renderer draws largest shapes first.
-- Creatures MUST include: body ellipse, head, eyes (2 circles + 2 pupils), nose/snout, at least 2 legs (4 for quadrupeds).
-- Add creature-specific features that make it instantly recognizable: mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, fins for fish, stripes/spots as extra shapes.
-- Legs should be positioned at the BOTTOM of the body ellipse, spread apart to suggest a stance.
-- Use 3-4 related colors: a primary for the body, a slightly darker shade for legs/mane, a lighter shade for belly/snout, and a dark accent for nose/pupils/outlines.`;
+- ALWAYS use "roundedRect" for legs/limbs with cornerRadius 3-5 for a smooth look.
+- Use "circle" for mane, head (when roughly round), eyes, and tufts.
+- The base_shape is a bounding hint — the REAL body shape is the large "body" ellipse feature.
+- Legs should be positioned at the BOTTOM of the body (y ≈ 34+ for a 50px tall creature), spread evenly under the body.
+- Use 3-4 related colors: primary for body, slightly darker for legs/back features, lighter for belly/snout, dark accent for nose/pupils.
+- Add creature-specific features: mane for lion, shell for turtle, wings for bird, horns for bull, tentacles for octopus, fins for fish, stripes as extra ellipses.`;
 
 function buildPrompt(words) {
   return `You are a creative game designer for an absurdist action game called "Determined".
@@ -168,7 +177,7 @@ Rules:
 - Make it fun, absurd, and creative. Lean into humor.
 - The creature's weakness should relate to the weapon's damage type when it makes sense.
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
-- Use 10-14 features per creature. The FIRST feature should be a large "body" ellipse. Then add head, eyes (with pupils), nose, mouth, ears, legs (use roundedRect with cornerRadius 3-5), and creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
+- Use 12-18 features per creature. The FIRST feature should be a large "body" ellipse. Then add head, eyes (with pupils), nose, mouth, ears, 4 legs (use roundedRect with cornerRadius 3-5), and creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
 - Use a color palette: primary body color, slightly darker shade for limbs, lighter shade for belly/snout, dark accent for nose/pupils.
 - The environment item's visual is a small 20-30px pickup icon. Use 2-5 features to build a simple, recognizable symbol of "${words.environment}" (e.g. a lightning bolt, snowflake, flame, raindrop, tornado shape). Keep it compact.
 - The environment item's visual_effect.style controls the targeted animation when the item is activated. Choose the best match for "${words.environment}": "bolt" for lightning/electricity/energy, "flames" for fire/heat/lava/magma, "freeze" for ice/snow/cold/frost, "wind" for tornado/hurricane/gust/storm, "explosion" for earthquake/shockwave/meteor/bomb, "beam" for laser/light/solar/radiation, "rain" for rain/hail/acid/flood.
@@ -326,7 +335,7 @@ async function callGroq(words) {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 3000,
+      max_tokens: 3500,
     }),
   });
 
@@ -427,7 +436,7 @@ function sanitizeData(data) {
       o.visual.color_secondary = hexColor(o.visual.color_secondary, '#FF6666');
       o.visual.color_accent = hexColor(o.visual.color_accent, '#220000');
       if (Array.isArray(o.visual.features)) {
-        o.visual.features = o.visual.features.slice(0, 14).map(sanitizeFeature).filter(Boolean);
+        o.visual.features = o.visual.features.slice(0, 20).map(sanitizeFeature).filter(Boolean);
       } else {
         o.visual.features = [];
       }
