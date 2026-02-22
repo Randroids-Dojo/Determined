@@ -40,7 +40,7 @@ function hasProfanity(word) {
 
 // ── Main Menu ──
 
-export function showMainMenu(onPlay, onLeaderboard) {
+export function showMainMenu(onPlay, onLeaderboard, onAssets) {
   clearOverlay();
   showOverlay();
   overlayEl.innerHTML = `
@@ -50,9 +50,14 @@ export function showMainMenu(onPlay, onLeaderboard) {
       <div class="menu-buttons">
         <button id="btn-play" class="btn btn-primary">PLAY</button>
         <button id="btn-leaderboard" class="btn btn-secondary">LEADERBOARD</button>
+        <button id="btn-assets" class="btn btn-assets">ASSETS</button>
       </div>
     </div>
   `;
+  document.getElementById('btn-assets').addEventListener('click', () => {
+    sfxMenuSelect();
+    onAssets();
+  });
   document.getElementById('btn-play').addEventListener('click', () => {
     resumeAudio();
     sfxMenuSelect();
@@ -422,6 +427,104 @@ export function showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore
     onBack();
   });
   setTimeout(() => initialsInput.focus(), 100);
+}
+
+// ── Assets Screen ──
+
+export function showAssetsScreen(assetList, onSelectAsset, onBack) {
+  clearOverlay();
+  showOverlay();
+
+  let listHtml = '';
+  if (assetList.length === 0) {
+    listHtml = '<p class="assets-empty">No assets yet. Play a game to generate some!</p>';
+  } else {
+    for (let i = 0; i < assetList.length; i++) {
+      const item = assetList[i];
+      listHtml += `
+        <button class="asset-item" data-index="${i}">
+          <span class="asset-type-badge asset-type-${item.type}">${item.type.toUpperCase()}</span>
+          <span class="asset-word">${escapeHtml(item.word)}</span>
+          <span class="asset-name">${escapeHtml(item.entityData?.name || '')}</span>
+        </button>
+      `;
+    }
+  }
+
+  overlayEl.innerHTML = `
+    <div class="assets-screen">
+      <h2>ASSETS</h2>
+      <p class="assets-subtitle">Your generated creations</p>
+      <div class="assets-list">
+        ${listHtml}
+      </div>
+      <button id="btn-assets-back" class="btn btn-secondary">BACK</button>
+    </div>
+  `;
+
+  for (const btn of overlayEl.querySelectorAll('.asset-item')) {
+    btn.addEventListener('click', () => {
+      sfxMenuSelect();
+      onSelectAsset(assetList[parseInt(btn.dataset.index)]);
+    });
+  }
+
+  document.getElementById('btn-assets-back').addEventListener('click', () => {
+    sfxMenuSelect();
+    onBack();
+  });
+}
+
+// ── Asset Detail Screen ──
+
+/**
+ * Show the asset detail view with 2D and 3D canvases side by side.
+ * Returns the canvas elements so the caller can start the viewer.
+ */
+export function showAssetDetail(assetItem, onBack, onRegenerate) {
+  clearOverlay();
+  showOverlay();
+
+  overlayEl.innerHTML = `
+    <div class="asset-detail-screen">
+      <div class="asset-detail-header">
+        <div class="asset-detail-buttons">
+          <button id="btn-detail-back" class="btn btn-secondary btn-back">BACK</button>
+          <button id="btn-regenerate" class="btn btn-regenerate">REGENERATE</button>
+        </div>
+        <div class="asset-detail-info">
+          <span class="asset-type-badge asset-type-${assetItem.type}">${assetItem.type.toUpperCase()}</span>
+          <h3>${escapeHtml(assetItem.entityData?.name || assetItem.word)}</h3>
+          <p class="asset-description">${escapeHtml(assetItem.entityData?.description || '')}</p>
+        </div>
+      </div>
+      <div class="asset-viewers">
+        <div class="asset-viewer-panel">
+          <p class="viewer-label">2D</p>
+          <canvas id="asset-canvas-2d" width="300" height="300"></canvas>
+        </div>
+        <div class="asset-viewer-panel">
+          <p class="viewer-label">3D</p>
+          <canvas id="asset-canvas-3d" width="300" height="300"></canvas>
+          <p class="viewer-hint">Drag to rotate</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('btn-detail-back').addEventListener('click', () => {
+    sfxMenuSelect();
+    onBack();
+  });
+  document.getElementById('btn-regenerate').addEventListener('click', () => {
+    sfxMenuSelect();
+    onRegenerate();
+  });
+
+  return {
+    canvas2d: document.getElementById('asset-canvas-2d'),
+    canvas3d: document.getElementById('asset-canvas-3d'),
+  };
 }
 
 function escapeHtml(str) {

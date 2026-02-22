@@ -54,6 +54,8 @@ export const STATE_LEVEL2_INTRO = 'level2_intro';
 export const STATE_LEVEL2_LOADING = 'level2_loading';
 export const STATE_LEVEL2_PLAYING = 'level2_playing';
 export const STATE_LEVEL2_VICTORY = 'level2_victory';
+export const STATE_ASSETS = 'assets';
+export const STATE_ASSET_DETAIL = 'asset_detail';
 
 // ── Level 2 (3D) constants ──
 export const L2_ARENA_RADIUS = 30;
