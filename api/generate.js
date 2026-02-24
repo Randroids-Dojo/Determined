@@ -351,7 +351,15 @@ async function callGroq(words) {
   const content = result.choices?.[0]?.message?.content;
   if (!content) throw new Error('Empty response from Groq');
 
-  return JSON.parse(content);
+  let parsed;
+  try {
+    parsed = JSON.parse(content);
+  } catch (parseErr) {
+    console.error('[generate] JSON parse failed for words:', JSON.stringify(words));
+    console.error('[generate] Raw LLM content:', content.slice(0, 500));
+    throw new Error(`JSON parse error: ${parseErr.message}`);
+  }
+  return parsed;
 }
 
 function validateData(data) {
@@ -535,10 +543,13 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required words (creature, weapon, environment)' });
   }
 
+  const tag = `[generate] words=${JSON.stringify(words)}`;
+
   // Check cache first (free, no rate limit cost) — skip if nocache
   if (!nocache) {
     const cached = await getCached(words);
     if (cached) {
+      console.log(`${tag} cache=hit`);
       return res.status(200).json(cached);
     }
   }
@@ -547,6 +558,7 @@ module.exports = async function handler(req, res) {
   const ip = getClientIP(req);
   const rl = await checkRateLimit(ip);
   if (!rl.allowed) {
+    console.warn(`${tag} rate_limited ip=${ip}`);
     return res.status(429).json({
       error: 'The creative spirits are resting. Try again later, or use words that have been imagined before!',
       retryAfter: rl.retryAfter,
@@ -554,26 +566,28 @@ module.exports = async function handler(req, res) {
   }
 
   // Call LLM
+  console.log(`${tag} calling Groq model=${GROQ_MODEL}`);
   try {
     let data = await callGroq(words);
 
     if (!validateData(data)) {
       // Retry once
-      console.warn('Invalid LLM response, retrying...');
+      console.warn(`${tag} invalid LLM response (missing top-level keys), retrying. Keys present: ${Object.keys(data || {}).join(',')}`);
       data = await callGroq(words);
     }
 
     if (validateData(data)) {
       sanitizeData(data);
       await cacheResults(words, data);
+      console.log(`${tag} success`);
       return res.status(200).json({ ...data, cached: false });
     }
 
     // Still invalid — fallback
-    console.warn('LLM returned invalid data after retry, using fallback');
+    console.error(`${tag} invalid after retry, using fallback. Keys present: ${Object.keys(data || {}).join(',')}`);
     return res.status(200).json({ ...FALLBACK, fallback: true });
   } catch (err) {
-    console.error('Generation error:', err);
+    console.error(`${tag} error: ${err.message}`);
     return res.status(200).json({ ...FALLBACK, fallback: true });
   }
 }
