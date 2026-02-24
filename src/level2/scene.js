@@ -10,6 +10,7 @@ let renderer = null;
 let scene = null;
 let camera = null;
 let clock = null;
+let resizeObserver = null;
 
 // Camera orbit state
 let cameraYaw = 0;        // Horizontal orbit angle (radians)
@@ -19,9 +20,15 @@ const CAMERA_PITCH_MAX = 1.25;
 const CAMERA_SENSITIVITY = 0.004;  // Radians per pixel of touch/mouse drag
 
 export function createScene(canvas3d) {
-  // Renderer
+  // Use the canvas's actual CSS display size so Three.js fills the container.
+  // clientWidth/Height force a synchronous layout read.
+  const w = canvas3d.clientWidth  || CANVAS_WIDTH;
+  const h = canvas3d.clientHeight || CANVAS_HEIGHT;
+
+  // Renderer — false as third arg prevents Three.js from writing inline CSS styles,
+  // leaving width:100%;height:100% from the stylesheet in control.
   renderer = new THREE.WebGLRenderer({ canvas: canvas3d, antialias: true });
-  renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
+  renderer.setSize(w, h, false);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -34,7 +41,19 @@ export function createScene(canvas3d) {
   scene.fog = new THREE.FogExp2(0x2a2a4e, 0.008); // Lighter fog, lower density
 
   // Camera
-  camera = new THREE.PerspectiveCamera(60, CANVAS_WIDTH / CANVAS_HEIGHT, 0.1, 200);
+  camera = new THREE.PerspectiveCamera(60, w / h, 0.1, 200);
+
+  // Resize observer — keep renderer and camera in sync if the window is resized
+  resizeObserver = new ResizeObserver(() => {
+    const nw = canvas3d.clientWidth;
+    const nh = canvas3d.clientHeight;
+    if (nw > 0 && nh > 0) {
+      renderer.setSize(nw, nh, false);
+      camera.aspect = nw / nh;
+      camera.updateProjectionMatrix();
+    }
+  });
+  resizeObserver.observe(canvas3d);
   camera.position.set(0, L2_CAMERA_HEIGHT, L2_CAMERA_DISTANCE);
   camera.lookAt(0, 1, 0);
 
@@ -138,6 +157,10 @@ export function renderScene() {
 }
 
 export function disposeScene() {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+    resizeObserver = null;
+  }
   if (renderer) {
     renderer.dispose();
   }

@@ -58,8 +58,6 @@ export function startLevel2(data, prevDeaths, prevTimeMs, words, onVictory) {
   // Show 3D canvases, hide 2D
   document.getElementById('game-canvas').style.display = 'none';
   canvas3d.style.display = 'block';
-  canvas3d.width = CANVAS_WIDTH;
-  canvas3d.height = CANVAS_HEIGHT;
   hudCanvas.style.display = 'block';
   hudCanvas.width = CANVAS_WIDTH;
   hudCanvas.height = CANVAS_HEIGHT;
