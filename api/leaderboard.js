@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
       return res.status(503).json({ error: 'Leaderboard not available' });
     }
 
-    const { initials, deaths, time, word_1, word_2, word_3, score: rawScore } = req.body || {};
+    const { initials, deaths, time, word_1, word_2, word_3, score: rawScore, bottles: rawBottles } = req.body || {};
 
     // ── Field presence & type validation ──
     if (!initials || typeof deaths !== 'number' || typeof time !== 'number') {
@@ -153,11 +153,16 @@ module.exports = async function handler(req, res) {
       ? Math.round(rawScore)
       : 0;
 
+    const bottles = (typeof rawBottles === 'number' && Number.isFinite(rawBottles) && rawBottles >= 0)
+      ? Math.min(Math.round(rawBottles), 999)
+      : 0;
+
     const entry = {
       initials: cleanInitials,
       deaths,
       time: Math.round(time * 10) / 10,
       score: l3Score,
+      bottles,
       word_1: cleanWord1,
       word_2: cleanWord2,
       word_3: cleanWord3,

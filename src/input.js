@@ -54,7 +54,7 @@ function updateActionsFromKeys() {
   actions.forward = !!(keys['ArrowUp'] || keys['KeyW']);
   actions.backward = !!(keys['ArrowDown'] || keys['KeyS']);
   // In Level 3, Space also fires (no jump on a spaceship)
-  actions.attack = !!(keys['KeyZ'] || (level3Active && keys['Space']));
+  actions.attack = !!(keys['KeyZ'] || keys['KeyJ'] || (level3Active && keys['Space']));
   actions.item = !!(keys['KeyX']);
   actions.reset = !!keys['KeyR'];
 

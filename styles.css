@@ -354,6 +354,12 @@ body {
   color: #aad4ff;
 }
 
+.bottles-col {
+  font-family: monospace;
+  color: #ffe080;
+  text-align: center;
+}
+
 /* ── Touch controls ── */
 #touch-controls {
   position: absolute;
@@ -1250,4 +1256,53 @@ body {
 .level3-victory-screen h2 {
   color: #00ccff;
   text-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+/* ── Level 4 styles ── */
+.level4-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #5533aa, #aa33cc);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 2px;
+  padding: 4px 14px;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  box-shadow: 0 0 16px rgba(180, 80, 255, 0.5);
+}
+
+.level4-intro-screen {
+  border-top: 3px solid #9955dd;
+}
+
+.btn-level4 {
+  background: linear-gradient(135deg, #5533aa, #aa33cc);
+  color: #fff;
+  border: none;
+  box-shadow: 0 0 20px rgba(180, 80, 255, 0.4);
+}
+
+.btn-level4:hover {
+  background: linear-gradient(135deg, #7755cc, #cc55ee);
+  box-shadow: 0 0 30px rgba(200, 100, 255, 0.6);
+}
+
+.level4-loading .level4-loading-badge {
+  color: #bb66ff;
+  font-size: 1.2rem;
+  font-weight: bold;
+  letter-spacing: 4px;
+  margin: 0.5rem 0;
+  text-shadow: 0 0 12px #bb66ff;
+}
+
+.level4-loading .loading-spinner {
+  border-color: rgba(180, 80, 255, 0.2);
+  border-top-color: #bb66ff;
+}
+
+.level4-victory-screen {
+  border-top: 3px solid #9955dd;
 }

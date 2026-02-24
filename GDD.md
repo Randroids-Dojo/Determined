@@ -133,16 +133,16 @@ A stick figure. Simple, charming, intentionally lo-fi.
 |-----|------|-------|
 | `WASD` / Arrow keys | Movement | All 4 directions. In 2D levels left/right only. |
 | `Space` | Jump (platformer) / Fire (shooter) | Context-dependent: jumps in L1/L2, fires in L3+ shooters |
-| `Z` | Attack / Primary action | Weapon swing, shoot, etc. |
+| `Z` / `J` | Attack / Primary action | Both keys mapped identically. `Z` is canonical; `J` is an ergonomic alias. |
 | `X` | Use Item / Secondary action | Environment item, bomb, special ability |
 | `Q` / `E` | Camera rotate | 3D levels only |
 | `R` | Reset/Retry | All levels |
 
 **Design rules:**
-- `Z` = primary action, `X` = secondary action. Do not use `J`, `K`, or other distant keys.
+- `Z` = primary action, `X` = secondary action. `J` is an alias for `Z` for players who prefer it.
 - `W`/`↑` move forward in 3D levels — **never bind them to jump in any level with forward movement**.
 - `Space` jumps in platformer levels and fires in shooter levels. Do not add jump to shooter levels.
-- Touch controls mirror keyboard: `⚔` = Z, `★` = X, `▲` = Space (context-appropriate label per level).
+- Touch controls mirror keyboard: `⚔` = Z/J, `★` = X, `▲` = Space (context-appropriate label per level).
 
 ### 5.3a Level 1 Controls (2D Platformer)
 
@@ -150,7 +150,7 @@ A stick figure. Simple, charming, intentionally lo-fi.
 |--------|----------|-------|-------------|
 | Move Left/Right | `A`/`D` or `←`/`→` | `◀` `▶` | Walk |
 | Jump | `W` or `↑` or `Space` | `▲` | Gravity-based arc |
-| Attack | `Z` | `⚔` | Use weapon on nearby obstacle |
+| Attack | `Z` / `J` | `⚔` | Use weapon on nearby obstacle |
 | Use Item | `X` | `★` | Trigger environment effect (one-time, pick up first) |
 | Reset | `R` | `↺` | Restart round, increment death counter |
 
@@ -160,7 +160,7 @@ A stick figure. Simple, charming, intentionally lo-fi.
 |--------|----------|-------|-------------|
 | Move (all dirs) | `WASD` or Arrows | Left joystick | Camera-relative 8-dir movement |
 | Jump | `Space` | `▲` | **Space only** — W/↑ move forward, not jump |
-| Attack | `Z` | `⚔` | Weapon swing toward obstacle |
+| Attack | `Z` / `J` | `⚔` | Weapon swing toward obstacle |
 | Use Item | `X` | `★` | Trigger environment effect |
 | Rotate Camera | `Q` / `E` | Right joystick / drag | Orbit camera left/right |
 | Reset | `R` | `↺` | Restart round |
@@ -170,8 +170,16 @@ A stick figure. Simple, charming, intentionally lo-fi.
 | Action | Keyboard | Touch | Description |
 |--------|----------|-------|-------------|
 | Move (all dirs) | `WASD` or Arrows | `◀` `▶` `▲` `▼` | 8-directional thrust |
-| Fire | `Z` or `Space` | `⚔` | Shoot toward nearest enemy (cooldown-gated) |
+| Fire | `Z` / `J` or `Space` | `⚔` | Shoot toward nearest enemy (cooldown-gated) |
 | Bomb | `X` | `★` | One-use: destroys all enemies on screen |
+
+### 5.3d Level 4 Controls (Isometric Voxel Farm)
+
+| Action | Keyboard | Touch | Description |
+|--------|----------|-------|-------------|
+| Move (all dirs) | `WASD` or Arrows | `◀` `▶` `▲` `▼` | Isometric 8-dir (W=NW, S=SE, A=SW, D=NE on screen) |
+| Milk | `Z` / `J` (hold) | `⚔` (hold) | Hold near a cow to fill a bottle (~2 seconds) |
+| Deliver | Walk to farmhouse door | — | Auto-delivers when player steps into the glowing doorway |
 
 Touch controls display as on-screen button overlays. Only rendered on devices with touch support.
 
@@ -550,9 +558,11 @@ Check cache: GET obstacle:lion
 
 | Field | Type | Description |
 |-------|------|-------------|
-| initials | string (3 chars) | Player's initials (entered on victory) |
-| deaths | number | Total deaths before reaching the flag |
-| time | number | Total elapsed time in seconds (includes retries) |
+| initials | string (3 chars) | Player's initials (entered on Level 4 victory) |
+| deaths | number | Total deaths across all 4 levels |
+| time | number | Total elapsed time in seconds across all 4 levels |
+| score | number | Level 3 space shooter kill score |
+| bottles | number | Level 4 milk bottles delivered |
 | word_1 | string | The creature word |
 | word_2 | string | The weapon word |
 | word_3 | string | The environment word |
@@ -560,16 +570,18 @@ Check cache: GET obstacle:lion
 
 ### 10.2 Scoring & Ranking
 
-One single global leaderboard. Ranked by:
-1. **Fewest deaths** (primary)
-2. **Fastest time** (tiebreaker)
+One single global leaderboard. Entries are submitted after completing all 4 levels. Ranked by:
+1. **Fewest deaths** (primary, across all levels)
+2. **Fastest total time** (tiebreaker)
+
+The `score` (L3 kills) and `bottles` (L4 deliveries) are displayed as bonus stats but do not affect ranking order.
 
 ### 10.3 Display
 
-- Shown after reaching the flagpole
+- Shown after completing Level 4
 - Top 50 entries displayed
 - Player's own entry highlighted — **not yet implemented**
-- Columns: Rank, Initials, Deaths, Time, Words Used
+- Columns: Rank, Initials, Deaths, Time, Score (L3), Bottles (L4), Words Used
 - Also accessible from the main menu
 
 ### 10.4 Storage
@@ -612,22 +624,53 @@ Determined/
 ├── PRIORITIES.md           # Prioritized post-MVP roadmap
 │
 ├── src/                    # Frontend game code
-│   ├── game.js             # Main game loop, state machine, orchestration
+│   ├── game.js             # Main game loop, state machine, orchestration (all 4 levels)
+│   ├── constants.js        # Game balance constants, screen dimensions, flavor texts, states
+│   ├── input.js            # Keyboard + touch input handling (shared across all levels)
+│   ├── ui.js               # Menu screens, word entry, leaderboard, level intro/victory screens
+│   ├── audio.js            # Web Audio API sound effects
+│   ├── assetStore.js       # localStorage persistence for generated assets
+│   ├── assetViewer.js      # 2D/3D/vector/voxel asset preview viewer
+│   │
+│   │   # Level 1 — 2D Platformer
 │   ├── player.js           # Stick figure player logic
 │   ├── obstacle.js         # Obstacle/creature AI and behavior
 │   ├── weapon.js           # Weapon mechanics and projectiles
 │   ├── environment.js      # Environment item effect
-│   ├── renderer.js         # Canvas rendering / sprite composer
+│   ├── renderer.js         # Canvas 2D rendering / sprite composer
 │   ├── physics.js          # Gravity, collision detection (AABB)
-│   ├── input.js            # Keyboard + touch input handling
-│   ├── audio.js            # Web Audio API sound effects
 │   ├── hud.js              # HUD overlay (health, items, timer)
-│   ├── ui.js               # Menu screens, word entry, leaderboard display
-│   └── constants.js        # Game balance constants, screen dimensions, flavor texts
+│   │
+│   ├── level2/             # Level 2 — 3D Arena (Three.js)
+│   │   ├── level2.js       # Orchestrator + game loop
+│   │   ├── scene.js        # Three.js scene, camera, lighting
+│   │   ├── arena.js        # 3D arena geometry
+│   │   ├── player3d.js     # 3D player character
+│   │   ├── obstacle3d.js   # 3D creature AI
+│   │   ├── weapon3d.js     # 3D weapon attacks
+│   │   ├── environment3d.js# 3D environment effects
+│   │   └── hud3d.js        # HUD overlay for Level 2
+│   │
+│   ├── level3/             # Level 3 — 2D Space Shooter (Asteroids-style)
+│   │   ├── level3.js       # Orchestrator + game loop
+│   │   ├── playerShip.js   # Ship movement + auto-aim
+│   │   ├── enemySwarm.js   # Enemy AI, spawning, bullets
+│   │   ├── spaceArena.js   # Parallax starfield + perspective grid
+│   │   ├── vectorRenderer.js # Vector/wireframe drawing
+│   │   └── hud3.js         # HUD for Level 3
+│   │
+│   └── level4/             # Level 4 — Isometric Voxel Farm
+│       ├── level4.js       # Orchestrator + game loop
+│       ├── voxelRenderer.js# Isometric voxel rendering engine
+│       ├── farmEnvironment.js # Farm map, terrain, magic particles
+│       ├── cowObstacle.js  # Peaceful cow AI + milking mechanic
+│       ├── player4.js      # Isometric player movement + bottle carry
+│       └── hud4.js         # HUD for Level 4
 │
 ├── api/                    # Vercel serverless functions
 │   ├── generate.js         # LLM generation endpoint (Groq proxy, cache, rate limit)
-│   └── leaderboard.js      # Leaderboard CRUD endpoint
+│   ├── leaderboard.js      # Leaderboard CRUD endpoint
+│   └── random-words.js     # Random word generator for word entry screen
 ```
 
 ### 11.3 Deployment
@@ -728,17 +771,22 @@ The game should be beatable in 1-5 attempts for a skilled player, even with a "b
 
 ---
 
-## 14. Future Levels & Expansion
+## 14. Levels Overview
 
-Level 1 establishes the core loop. Future levels could vary by:
+All four levels are implemented. Each applies the same three player-entered words through a completely different game genre and visual style.
 
-| Level | New Mechanic | Word Categories |
-|-------|-------------|----------------|
-| 1 | Core loop (creature + weapon + environment) | Creature, Weapon, Weather |
-| 2 | Multiple obstacles, obstacle can have allies | Creature, Weapon, Sidekick |
-| 3 | Terrain generation (platforms, gaps, hazards) | Creature, Weapon, Terrain |
-| 4 | Boss battle (larger obstacle with phases) | Boss, Weapon, Power-Up |
-| 5 | Player transformation (become something) | Creature, Transformation, Arena |
+| Level | Genre | Art Style | Core Mechanic | Objective |
+|-------|-------|-----------|---------------|-----------|
+| 1 | 2D Side-scrolling Platformer | Programmatic Canvas 2D sprites | Attack, use item, jump across platforms | Defeat the creature and reach the flagpole |
+| 2 | 3D Arena Fighter | Three.js procedural geometry | 3D movement, attack, dodge | Defeat the creature in the arena |
+| 3 | Top-down Space Shooter | Neon vector wireframe (asteroids-style) | Shoot enemies, dodge bullets | Survive 90 seconds; maximize kill score |
+| 4 | Isometric Voxel Farm | Isometric voxel renderer (Canvas 2D painter's algorithm) | Hold to milk cows, carry bottles to farmhouse | Deliver as many bottles as possible in 90 seconds |
+
+### Leaderboard Ranking
+
+The combined score across all four levels determines leaderboard rank:
+- **Ranking score** = `deaths × 10000 + total_time` (lower is better — fewer deaths first, time as tiebreaker)
+- **Display columns**: deaths, time, Level 3 kill score (higher = better), Level 4 bottles delivered (higher = better), word trio
 
 ### Future Feature Ideas
 - **Word combos:** Certain word combinations trigger easter eggs or bonus content
@@ -783,7 +831,7 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 - [ ] Share results (screenshot / link)
 - [ ] PWA support (offline play with cached content)
 - [ ] Analytics dashboard for popular words
-- [ ] Additional levels (2-5)
+- [x] Additional levels — Levels 2, 3, and 4 all implemented
 
 ### Known Issues
 
@@ -791,6 +839,10 @@ No critical issues at this time. (Previously: leaderboard initials not saving �
 
 ### Recently Completed (from Remaining Work)
 
+- ~~**Level 4 — Isometric Voxel Farm:**~~ ✅ Full fourth level implemented with a custom isometric voxel renderer (painter's algorithm, 3-face cubes with depth sorting), 14×10 fantasy farm map, cow AI (wander/idle state machine), 2-second hold-to-milk mechanic with per-cow cooldown, bottle delivery to farmhouse, 90-second countdown timer, and ambient magic particle effects. Score = bottles delivered.
+- ~~**J key as attack alias:**~~ ✅ `J` now triggers attack/milk across all levels (ergonomic alternative to `Z`). All level intro help screens updated.
+- ~~**Leaderboard bottles column:**~~ ✅ Level 4 "bottles delivered" is stored in the leaderboard entry and displayed in a dedicated `🥛` column. Level 3 kill score is similarly stored and displayed.
+- ~~**Asset viewer voxel panel:**~~ ✅ The asset detail viewer now includes a fourth "VOXEL" canvas panel showing each asset rendered in Level 4's isometric voxel style alongside the existing 2D, 3D, and vector views.
 - ~~**Death visual feedback (Section 5.2):**~~ ✅ A "YOU DIED" overlay with red vignette and incrementing death count now displays during the 800ms death pause. (The ragdoll collapse animation itself is still not implemented — see Remaining Work below.)
 - ~~**LLM response validation (Section 8.5):**~~ ✅ `sanitizeData()` in `api/generate.js` now deep-validates all numeric fields (clamped to schema ranges), enum fields, hex colours, string lengths, and `visual.features` shape properties before caching and returning to the client.
 - ~~**Obstacle death animation:**~~ ✅ Obstacle now plays a 600ms fade-out + shrink animation on death.
