@@ -399,11 +399,11 @@ function goToAssetDetail(assetItem) {
 
 function showDetailForItem(item) {
   stopAssetViewer();
-  const { canvas2d, canvas3d } = showAssetDetail(item, () => {
+  const { canvas2d, canvas3d, canvasVec } = showAssetDetail(item, () => {
     stopAssetViewer();
     goToAssets();
   }, () => regenerateAsset(item));
-  startAssetViewer(canvas2d, canvas3d, item.entityData);
+  startAssetViewer(canvas2d, canvas3d, item.entityData, canvasVec, item.type);
 }
 
 const TYPE_TO_KEY = { creature: 'obstacle', weapon: 'weapon', environment: 'environment_item' };

@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { drawVisual } from './renderer.js';
+import { drawVectorVisual } from './level3/vectorRenderer.js';
 
 let animFrameId = null;
 let renderer = null;
@@ -14,15 +15,30 @@ let camera = null;
 let controls = null;
 let meshGroup = null;
 
+// Vector type → neon color map
+const TYPE_COLORS = {
+  creature:    '#FF3366',
+  weapon:      '#00FFCC',
+  environment: '#AAFF44',
+};
+
+let canvasVec = null;
+let entityType = null;
+
 /**
- * Start the asset viewer with 2D and 3D canvases.
+ * Start the asset viewer with 2D, 3D, and vector wireframe canvases.
  * @param {HTMLCanvasElement} canvas2d - Canvas for 2D rendering
  * @param {HTMLCanvasElement} canvas3d - Canvas for 3D rendering
  * @param {object} entityData - The entity data with .visual property
+ * @param {HTMLCanvasElement} [cvec] - Canvas for Level 3 vector wireframe rendering
+ * @param {string} [type] - Asset type ('creature', 'weapon', 'environment')
  */
-export function startAssetViewer(canvas2d, canvas3d, entityData) {
+export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type) {
   const visual = entityData?.visual;
   if (!visual || !visual.features) return;
+
+  canvasVec = cvec || null;
+  entityType = type || null;
 
   // ── 2D Setup ──
   const ctx = canvas2d.getContext('2d');
@@ -147,6 +163,52 @@ export function startAssetViewer(canvas2d, canvas3d, entityData) {
     }
     controls.update();
     renderer.render(scene, camera);
+
+    // ── VECTOR: draw level 3 wireframe style ──
+    if (canvasVec) {
+      const vctx = canvasVec.getContext('2d');
+      const vcw = canvasVec.width;
+      const vch = canvasVec.height;
+
+      vctx.clearRect(0, 0, vcw, vch);
+      vctx.fillStyle = '#000008';
+      vctx.fillRect(0, 0, vcw, vch);
+
+      // Starfield backdrop
+      vctx.save();
+      const starSeed = [97, 37, 61, 13, 53, 41, 89, 29, 71, 43, 67, 19, 83, 31, 59, 11];
+      for (let si = 0; si < starSeed.length; si++) {
+        const sx = (starSeed[si] * 37 + si * 97) % vcw;
+        const sy = (starSeed[si] * 53 + si * 61) % vch;
+        const sa = 0.3 + 0.4 * Math.abs(Math.sin(t * 0.7 + si));
+        vctx.globalAlpha = sa;
+        vctx.fillStyle = '#ffffff';
+        vctx.fillRect(sx, sy, 1, 1);
+      }
+      vctx.globalAlpha = 1;
+      vctx.restore();
+
+      const neonColor = TYPE_COLORS[entityType] || '#00FFFF';
+      const vw = visual.width || 50;
+      const vh = visual.height || 45;
+      const pad = 40;
+      const scaleX = (vcw - pad * 2) / vw;
+      const scaleY = (vch - pad * 2) / vh;
+      const vecScale = Math.min(scaleX, scaleY, 4);
+
+      const bob = Math.sin(t * 2) * 6;
+      const pulse = 1 + Math.sin(t * 3) * 0.03;
+
+      drawVectorVisual(
+        vctx,
+        visual,
+        vcw / 2,
+        vch / 2 + bob,
+        vecScale * pulse,
+        neonColor,
+        neonColor,
+      );
+    }
   }
   animate();
 }
@@ -588,6 +650,8 @@ export function stopAssetViewer() {
   }
   camera = null;
   meshGroup = null;
+  canvasVec = null;
+  entityType = null;
 }
 
 function parseColor(str, fallback) {
