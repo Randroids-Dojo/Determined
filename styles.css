@@ -1097,6 +1097,19 @@ body {
   min-width: auto;
 }
 
+.asset-regen-error {
+  width: 100%;
+  max-width: 640px;
+  background: rgba(255, 80, 80, 0.15);
+  border: 1px solid rgba(255, 80, 80, 0.5);
+  color: #ff9999;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 .btn-regenerate {
   background: transparent;
   color: #44ddff;

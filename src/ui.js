@@ -593,12 +593,13 @@ export function showAssetsScreen(assetList, onSelectAsset, onBack) {
  * Show the asset detail view with 2D and 3D canvases side by side.
  * Returns the canvas elements so the caller can start the viewer.
  */
-export function showAssetDetail(assetItem, onBack, onRegenerate) {
+export function showAssetDetail(assetItem, onBack, onRegenerate, errorMsg) {
   clearOverlay();
   showOverlay();
 
   overlayEl.innerHTML = `
     <div class="asset-detail-screen">
+      ${errorMsg ? `<div class="asset-regen-error">${escapeHtml(errorMsg)}</div>` : ''}
       <div class="asset-detail-header">
         <div class="asset-detail-buttons">
           <button id="btn-detail-back" class="btn btn-secondary btn-back">BACK</button>

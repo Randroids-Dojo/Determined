@@ -188,12 +188,11 @@ async function onWordsSubmitted(submittedWords) {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
     llmData = data;
-    saveAssets(words, data);
+    if (!data.fallback) saveAssets(words, data);
     startGame(data);
   } catch (err) {
     console.warn('LLM generation failed, using fallback:', err);
     llmData = FALLBACK_DATA;
-    saveAssets(words, FALLBACK_DATA);
     startGame(FALLBACK_DATA);
   }
 }
@@ -466,12 +465,12 @@ function goToAssetDetail(assetItem) {
   showDetailForItem(assetItem);
 }
 
-function showDetailForItem(item) {
+function showDetailForItem(item, errorMsg) {
   stopAssetViewer();
   const { canvas2d, canvas3d, canvasVec, canvasVox } = showAssetDetail(item, () => {
     stopAssetViewer();
     goToAssets();
-  }, () => regenerateAsset(item));
+  }, () => regenerateAsset(item), errorMsg);
   startAssetViewer(canvas2d, canvas3d, item.entityData, canvasVec, item.type, canvasVox);
 }
 
@@ -488,15 +487,27 @@ async function regenerateAsset(item) {
       body: JSON.stringify({ words: item.words, nocache: true }),
     });
 
+    if (resp.status === 429) {
+      const errData = await resp.json().catch(() => ({}));
+      const msg = errData.error || 'The creative spirits are recharging — try again in a moment!';
+      showDetailForItem(item, msg);
+      return;
+    }
+
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
-    saveAssets(item.words, data);
 
+    if (data.fallback) {
+      showDetailForItem(item, 'Generation failed — your original asset is preserved. Try again!');
+      return;
+    }
+
+    saveAssets(item.words, data);
     const newEntityData = data[TYPE_TO_KEY[item.type]];
     showDetailForItem({ ...item, entityData: newEntityData });
   } catch (err) {
     console.warn('Regeneration failed:', err);
-    showDetailForItem(item);
+    showDetailForItem(item, 'Something went wrong — your original asset is preserved. Try again!');
   }
 }
 

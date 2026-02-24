@@ -12,7 +12,8 @@ The game is deployed and has been battle-tested in a real environment.
 - **Done:** `GROQ_API_KEY` confirmed set in Vercel environment variables
 - **Done:** Vercel KV store provisioned and connected (caching + leaderboard + rate limiting all working)
 - **Done:** Full loop tested: menu → word entry → LLM generation → gameplay → victory → leaderboard
-- **Done:** Fallback path confirmed: returns pre-defined defaults when LLM fails
+- **Done:** Fallback path confirmed: returns pre-defined defaults when LLM fails; fallback data is not saved to localStorage
+- **Done:** Groq TPM rate limit (6000 tokens/min) handled — rapid back-to-back calls now surface a proper 429 with retry-after seconds instead of silently serving fallback content
 
 ### 1b. Input validation hardening ✅
 - **Done:** Added `sanitizeData()` with deep validation of all obstacle, weapon, and environment fields — numeric clamping, enum validation, hex colour checks, string length limits, and per-feature-type shape property sanitization

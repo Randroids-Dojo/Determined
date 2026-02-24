@@ -377,16 +377,26 @@ Browser → Vercel API Route (/api/generate) → Groq API
 
 ### 8.3 Rate Limiting
 
+Two independent rate limits apply:
+
+**Our own limits (Vercel KV):**
+
 | Limit | Value | Window |
 |-------|-------|--------|
 | Per-IP | 10 generations | Rolling 1 hour |
 | Global (all IPs) | 50 generations | Rolling 1 hour |
 
-Rate limit state is stored in Vercel KV (Upstash Redis). When a limit is hit, the API returns a friendly message:
+When hit, returns HTTP 429 with: *"The creative spirits are resting. Try again later, or use words that have been imagined before!"*
 
-> "The creative spirits are resting. Try again in X minutes, or use words that have been imagined before!"
+**Groq's token-per-minute (TPM) limit:**
 
-Cached results (previously generated words) do **not** count against rate limits.
+| Model | TPM limit (free tier) |
+|-------|----------------------|
+| llama-3.1-8b-instant | 6,000 tokens/min |
+
+Each generation request uses ~3,500–4,500 tokens. Two rapid back-to-back calls (e.g. initial generation immediately followed by REGENERATE) can exhaust the window. When Groq returns 429, the API surfaces it as HTTP 429 with the exact retry-after time: *"The creative spirits are recharging — try again in Xs!"*
+
+Cached results (previously generated words) do **not** count against either limit.
 
 ### 8.4 Full JSON Schema
 
@@ -491,10 +501,12 @@ The LLM is asked to return the following structure:
 
 The API route validates the LLM response against the schema. If the response is malformed:
 1. Retry once with a stricter prompt
-2. If still malformed, fall back to a set of pre-defined defaults based on the input category
+2. If still malformed, return fallback defaults with `"fallback": true` in the response body
 3. Log the failure for debugging
 
-Pre-defined fallback defaults ensure the game is always playable even if the LLM fails.
+**Groq rate limit (429):** Returned as HTTP 429 to the client (not a silent fallback). The error message embeds the exact retry-after seconds from Groq's response. The client displays a friendly error banner and preserves the user's existing asset.
+
+**Fallback defaults:** Pre-defined defaults ensure the game is always playable even when the LLM fails. Fallback responses are intentionally **not** saved to `localStorage` — this prevents dummy content from appearing in the Asset Viewer and polluting previously generated assets.
 
 **Deep sanitization (implemented):** After passing top-level structure validation, `sanitizeData()` in `api/generate.js` processes every field before returning the response to the client:
 - All numeric fields are clamped to their schema ranges (e.g. `health` 50–200, `attack_damage` 5–30)
@@ -712,9 +724,9 @@ Determined/
 ```
 
 **Error Responses:**
-- `429` -- Rate limited (includes `retryAfter` field)
+- `429` -- Rate limited; two sources: (1) our own per-IP/global limits, (2) Groq's token-per-minute limit. Both include a `retryAfter` field (seconds). Groq 429s embed the retry time directly in the `error` message string.
 - `400` -- Invalid input (missing words)
-- `200` with `"fallback": true` -- LLM failure; fallback data is returned so the game is always playable
+- `200` with `"fallback": true` -- LLM validation failure after retry; fallback data returned so the game is always playable. Fallback responses are **not** saved to `localStorage`.
 
 #### `GET /api/leaderboard`
 
@@ -836,7 +848,7 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 
 ### Known Issues
 
-No critical issues at this time.
+No critical issues at this time. Previously, triggering REGENERATE immediately after a fresh generation would silently replace the asset with fallback content ("Shockwave") due to Groq's 6000 TPM limit being exceeded. This is now handled — the error is surfaced and the original asset is preserved.
 
 ### Remaining Work (within MVP features)
 
@@ -951,7 +963,16 @@ Each asset is shown in four rendering panels simultaneously:
 
 ### REGENERATE Button
 
-Each asset detail view includes a REGENERATE button that re-calls the LLM to produce fresh art for that word. The new result overwrites the cached version in both Vercel KV and `localStorage`.
+Each asset detail view includes a REGENERATE button that re-calls the LLM (with `nocache: true`) to produce fresh art for that word.
+
+**On success:** The new result overwrites the cached version in both Vercel KV and `localStorage`.
+
+**On failure:** The original asset is preserved in `localStorage`. A red error banner is shown above the asset header explaining what went wrong:
+- Groq TPM rate limit → *"The creative spirits are recharging — try again in Xs!"*
+- LLM validation failure → *"Generation failed — your original asset is preserved. Try again!"*
+- Network or unexpected error → *"Something went wrong — your original asset is preserved. Try again!"*
+
+Fallback data is never saved on regenerate failure, so other assets from the same word set are unaffected.
 
 ---
 

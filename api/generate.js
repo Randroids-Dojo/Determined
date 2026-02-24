@@ -352,6 +352,14 @@ async function callGroq(words) {
 
   if (!resp.ok) {
     const text = await resp.text();
+    if (resp.status === 429) {
+      const match = text.match(/try again in (\d+\.?\d*)s/i);
+      const retryAfter = match ? Math.ceil(parseFloat(match[1])) : 30;
+      const err = new Error(`Groq rate limit`);
+      err.isGroqRateLimit = true;
+      err.retryAfter = retryAfter;
+      throw err;
+    }
     throw new Error(`Groq API error ${resp.status}: ${text}`);
   }
 
@@ -595,6 +603,13 @@ module.exports = async function handler(req, res) {
     console.error(`${tag} invalid after retry, using fallback. Keys present: ${Object.keys(data || {}).join(',')}`);
     return res.status(200).json({ ...FALLBACK, fallback: true });
   } catch (err) {
+    if (err.isGroqRateLimit) {
+      console.warn(`${tag} Groq rate limited, retryAfter=${err.retryAfter}s`);
+      return res.status(429).json({
+        error: `The creative spirits are recharging — try again in ${err.retryAfter}s!`,
+        retryAfter: err.retryAfter,
+      });
+    }
     console.error(`${tag} error: ${err.message}`);
     return res.status(200).json({ ...FALLBACK, fallback: true });
   }
