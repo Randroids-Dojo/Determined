@@ -22,6 +22,12 @@ const LAYER_CONFIGS = [
 let layers = [];    // Array of arrays of star objects
 let elapsed = 0;
 
+// Environment theming — set by initArena from environment_item visual_effect colors
+let gridColor = '0, 255, 255';   // default cyan (R, G, B as string for rgba())
+let nebulaColor1 = '60, 0, 100';
+let nebulaColor2 = '0, 30, 90';
+let nebulaColor3 = '80, 0, 60';
+
 // Grid config
 const GRID_VANISH_X = CANVAS_WIDTH / 2;
 const GRID_VANISH_Y = CANVAS_HEIGHT * 0.28; // vanishing point above center
@@ -45,11 +51,26 @@ function randomStar(layerIdx) {
 }
 
 /**
+ * Parse a hex color string into an "R, G, B" string for use in rgba().
+ * @param {string} hex — e.g. '#FF4400'
+ * @returns {string} e.g. '255, 68, 0'
+ */
+function hexToRgbStr(hex) {
+  const h = hex.replace('#', '');
+  const r = parseInt(h.substring(0, 2), 16);
+  const g = parseInt(h.substring(2, 4), 16);
+  const b = parseInt(h.substring(4, 6), 16);
+  if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
+  return `${r}, ${g}, ${b}`;
+}
+
+/**
  * Initialize the arena state.
  * @param {number} _cw — canvas width (unused; uses CANVAS_WIDTH constant)
  * @param {number} _ch — canvas height (unused; uses CANVAS_HEIGHT constant)
+ * @param {Object} [envItem] — optional environment_item data for color theming
  */
-export function initArena(_cw, _ch) {
+export function initArena(_cw, _ch, envItem) {
   elapsed = 0;
   layers = [];
   for (let l = 0; l < LAYER_COUNT; l++) {
@@ -58,6 +79,27 @@ export function initArena(_cw, _ch) {
       stars.push(randomStar(l));
     }
     layers.push(stars);
+  }
+
+  // Apply environment color theming
+  const c1 = envItem?.visual_effect?.color_primary;
+  const c2 = envItem?.visual_effect?.color_secondary;
+  const rgb1 = c1 ? hexToRgbStr(c1) : null;
+  const rgb2 = c2 ? hexToRgbStr(c2) : null;
+
+  if (rgb1) {
+    gridColor = rgb1;
+    nebulaColor1 = rgb1;
+    nebulaColor3 = rgb1;
+  } else {
+    gridColor = '0, 255, 255';
+    nebulaColor1 = '60, 0, 100';
+    nebulaColor3 = '80, 0, 60';
+  }
+  if (rgb2) {
+    nebulaColor2 = rgb2;
+  } else {
+    nebulaColor2 = '0, 30, 90';
   }
 }
 
@@ -98,9 +140,9 @@ export function drawArena(ctx, cw, ch) {
   ctx.fillRect(0, 0, cw, ch);
 
   // ── Nebula color blobs (subtle radial gradients) ──
-  drawNebula(ctx, cw * 0.15, ch * 0.25, cw * 0.45, 'rgba(60, 0, 100, 0.07)');
-  drawNebula(ctx, cw * 0.85, ch * 0.6,  cw * 0.4,  'rgba(0, 30, 90, 0.09)');
-  drawNebula(ctx, cw * 0.5,  ch * 0.8,  cw * 0.35, 'rgba(80, 0, 60, 0.06)');
+  drawNebula(ctx, cw * 0.15, ch * 0.25, cw * 0.45, `rgba(${nebulaColor1}, 0.07)`);
+  drawNebula(ctx, cw * 0.85, ch * 0.6,  cw * 0.4,  `rgba(${nebulaColor2}, 0.09)`);
+  drawNebula(ctx, cw * 0.5,  ch * 0.8,  cw * 0.35, `rgba(${nebulaColor3}, 0.06)`);
 
   // ── Perspective grid ──
   drawPerspectiveGrid(ctx, cw, ch);
@@ -136,7 +178,7 @@ function drawPerspectiveGrid(ctx, cw, ch) {
   const leftX = -cw * 0.1;
   const rightX = cw * 1.1;
 
-  ctx.strokeStyle = 'rgba(0, 255, 255, 0.18)';
+  ctx.strokeStyle = `rgba(${gridColor}, 0.18)`;
   ctx.beginPath();
   for (let i = 0; i <= GRID_V_LINES; i++) {
     const t = i / GRID_V_LINES;
@@ -148,7 +190,7 @@ function drawPerspectiveGrid(ctx, cw, ch) {
 
   // ── Horizontal receding lines ──
   // Use perspective foreshortening: lines bunch up near the vanish point
-  ctx.strokeStyle = 'rgba(0, 255, 255, 0.12)';
+  ctx.strokeStyle = `rgba(${gridColor}, 0.12)`;
   ctx.beginPath();
   for (let i = 1; i <= GRID_H_LINES; i++) {
     // Quadratic distribution: lines crowd near vanish point

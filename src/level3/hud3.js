@@ -6,7 +6,6 @@
 const HUD_HEIGHT = 40;
 const FONT_MAIN = 'bold 14px monospace';
 const FONT_TIMER = 'bold 20px monospace';
-const FONT_SHIP = '10px monospace'; // for life icons (drawn as tiny triangles)
 
 /**
  * Draw the Level 3 HUD.
@@ -19,8 +18,10 @@ const FONT_SHIP = '10px monospace'; // for life icons (drawn as tiny triangles)
  * @param {number} cw — canvas width
  * @param {number} ch — canvas height
  * @param {number} [enemyCount] — optional: living enemy count for bottom strip
+ * @param {boolean} [bombAvailable] — whether the bomb is still available
+ * @param {string|null} [bombColor] — environment color for bomb icon
  */
-export function drawHUD3(ctx, score, timeRemaining, lives, maxLives, cw, ch, enemyCount) {
+export function drawHUD3(ctx, score, timeRemaining, lives, maxLives, cw, ch, enemyCount, bombAvailable, bombColor) {
   ctx.save();
 
   // ── Top bar background ──
@@ -95,7 +96,7 @@ export function drawHUD3(ctx, score, timeRemaining, lives, maxLives, cw, ch, ene
     ctx.restore();
   }
 
-  // ── Bottom strip: enemy count (optional) ──
+  // ── Bottom strip: enemy count + bomb status ──
   if (enemyCount !== undefined) {
     ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
     ctx.fillRect(0, ch - 24, cw, 24);
@@ -114,6 +115,20 @@ export function drawHUD3(ctx, score, timeRemaining, lives, maxLives, cw, ch, ene
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`ENEMIES: ${enemyCount}`, cw / 2, ch - 12);
+
+    // Bomb indicator (left side of bottom strip)
+    const bColor = bombColor || '#FFFF00';
+    if (bombAvailable) {
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = bColor;
+      ctx.fillStyle = bColor;
+    } else {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    }
+    ctx.font = 'bold 11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`[K] BOMB${bombAvailable ? ' ✦' : ' ✕'}`, 10, ch - 12);
   }
 
   ctx.restore();

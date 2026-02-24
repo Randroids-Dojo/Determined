@@ -150,11 +150,12 @@ export function killEnemy(enemy) {
 export function checkBulletHits(bullets, enemies) {
   const killed = [];
   const hitBullets = [];
+  const hitEnemyIds = new Set(); // prevent double-killing same enemy in one pass
 
   for (const bullet of bullets) {
     if (bullet.life <= 0) continue;
     for (const enemy of enemies) {
-      if (enemy.dead) continue;
+      if (enemy.dead || hitEnemyIds.has(enemy.id)) continue;
 
       const radius = enemy.size * 20;
       const dx = bullet.x - enemy.x;
@@ -162,7 +163,7 @@ export function checkBulletHits(bullets, enemies) {
       if (dx * dx + dy * dy <= radius * radius) {
         killed.push(enemy);
         hitBullets.push(bullet);
-        enemy.dead = true;
+        hitEnemyIds.add(enemy.id);
         bullet.life = 0; // consume bullet
         break;
       }
