@@ -45,13 +45,13 @@ export function drawHUD3D(ctx, player, weapon, envItem, obstacle, deaths, elapse
 
   // ── Weapon name ──
   ctx.fillStyle = '#FFD700';
-  ctx.fillText(`⚔ ${weapon?.name || '---'}`, 230, hpY + 10);
+  ctx.fillText(`⚔ ${weapon?.name || '---'} [Z]`, 230, hpY + 10);
 
   // ── Environment item status ──
   const itemX = 400;
   if (envItem && envItem.pickedUp && !envItem.used) {
     ctx.fillStyle = '#44DDFF';
-    ctx.fillText(`⚡ ${envItem.name} [K/X]`, itemX, hpY + 10);
+    ctx.fillText(`⚡ ${envItem.name} [X]`, itemX, hpY + 10);
   } else if (envItem?.used) {
     ctx.fillStyle = '#666';
     ctx.fillText(`⚡ ${envItem.name} (used)`, itemX, hpY + 10);
@@ -131,6 +131,15 @@ export function drawHUD3D(ctx, player, weapon, envItem, obstacle, deaths, elapse
       ctx.textAlign = 'left';
     }
   }
+
+  // ── Keyboard controls hint (bottom strip) ──
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+  ctx.fillRect(0, CANVAS_HEIGHT - 20, CANVAS_WIDTH, 20);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('WASD/Arrows: move  |  Space: jump  |  Z: attack  |  X: item  |  Q/E: rotate cam  |  R: reset', CANVAS_WIDTH / 2, CANVAS_HEIGHT - 6);
+  ctx.textAlign = 'left';
 
   // ── Death overlay ──
   if (player.dead) {

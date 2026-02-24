@@ -19,7 +19,7 @@ import {
   respawnEnemies, drawEnemy,
 } from './enemySwarm.js';
 import { drawHUD3 } from './hud3.js';
-import { pollInput, showTouchL1Controls } from '../input.js';
+import { pollInput, showTouchL3Controls } from '../input.js';
 
 // ── Constants ──
 const ENEMY_TARGET_COUNT = 8;
@@ -110,8 +110,8 @@ export function startLevel3(data, _prevDeaths, _prevTimeMs, _words, onVictory) {
 
   running = true;
 
-  // Show L1-style touch controls (d-pad + attack button)
-  showTouchL1Controls();
+  // Show Level 3 touch controls (d-pad + fire/bomb buttons, no jump)
+  showTouchL3Controls();
 
   requestAnimationFrame(gameLoop);
 }
@@ -153,18 +153,10 @@ function update(dt, dtMs) {
   // 2. Update player ship
   updatePlayerShip(ship, actions, dt, CANVAS_WIDTH, CANVAS_HEIGHT, enemies);
 
-  // 3. Auto-shoot (shootIfReady) — add bullet to playerBullets
-  const autoBullet = shootIfReady(ship, enemies);
-  if (autoBullet) {
-    playerBullets.push(autoBullet);
-  }
-
-  // Manual shoot burst on attack button (fires immediately ignoring cooldown)
+  // 3. Fire on attack button press (respects cooldown — no auto-fire)
   if (actions.attack) {
-    const nearestBullet = forceShoot(ship, enemies);
-    if (nearestBullet) {
-      playerBullets.push(nearestBullet);
-    }
+    const bullet = shootIfReady(ship, enemies);
+    if (bullet) playerBullets.push(bullet);
   }
 
   // Bomb (K/X) — kills all living enemies, screen flash
@@ -365,47 +357,6 @@ function render() {
 
 // ── Helpers ──
 
-/**
- * Force-fire a bullet toward nearest enemy (for manual attack button), bypassing cooldown.
- * Uses a short forced cooldown to prevent machine-gun spam.
- */
-function forceShoot(ship, enemies) {
-  if (ship.shootCooldown >= ship.shootInterval * 0.5) return null;
-
-  let nearest = null;
-  let nearestDist = Infinity;
-  for (const e of enemies) {
-    if (e.dead) continue;
-    const dx = e.x - ship.x;
-    const dy = e.y - ship.y;
-    const d = dx * dx + dy * dy;
-    if (d < nearestDist) {
-      nearestDist = d;
-      nearest = e;
-    }
-  }
-  if (!nearest) return null;
-
-  ship.shootCooldown = ship.shootInterval * 0.5;
-
-  const dx = nearest.x - ship.x;
-  const dy = nearest.y - ship.y;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  const nx = dx / dist;
-  const ny = dy / dist;
-  const BULLET_SPEED = 6;
-
-  return {
-    x: ship.x + nx * 14,
-    y: ship.y + ny * 14,
-    vx: nx * BULLET_SPEED,
-    vy: ny * BULLET_SPEED,
-    angle: Math.atan2(dx, -dy),
-    life: 1200,
-    maxLife: 1200,
-    color: '#00FFFF',
-  };
-}
 
 function triggerBomb() {
   bombAvailable = false;

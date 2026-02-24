@@ -125,18 +125,55 @@ A stick figure. Simple, charming, intentionally lo-fi.
   - *Hit feedback (implemented):* On taking damage the player receives directional knockback (pushed away from the damage source) and a 150ms red flash on the stick figure, in addition to the existing invincibility blink.
 - **No customization** in Level 1 (future levels could allow this)
 
-### 5.3 Player Actions
+### 5.3 Control Scheme Philosophy
 
-| Action | Keyboard | Touch/Mobile | Description |
-|--------|----------|-------------|-------------|
-| Move Left | `A` or `←` | `◀` button | Walk left |
-| Move Right | `D` or `→` | `▶` button | Walk right |
-| Jump | `W` or `↑` or `Space` | `▲` button | Jump (gravity-based arc) |
-| Attack | `J` or `Z` | `⚔` button | Use weapon on nearby obstacle |
-| Use Item | `K` or `X` | `★` button | Trigger environment effect (one-time use, must pick up first) |
-| Reset/Retry | `R` | `↺` button | Round restarts instantly, death counter increments |
+**Standard mappings used across all levels — new levels must follow these conventions:**
 
-Touch controls display as on-screen button overlays. In portrait orientation the buttons are fixed at the bottom of the screen with larger tap targets (52px). In landscape they overlay the bottom of the canvas. Touch controls are only rendered on devices with touch support.
+| Key | Role | Notes |
+|-----|------|-------|
+| `WASD` / Arrow keys | Movement | All 4 directions. In 2D levels left/right only. |
+| `Space` | Jump (platformer) / Fire (shooter) | Context-dependent: jumps in L1/L2, fires in L3+ shooters |
+| `Z` | Attack / Primary action | Weapon swing, shoot, etc. |
+| `X` | Use Item / Secondary action | Environment item, bomb, special ability |
+| `Q` / `E` | Camera rotate | 3D levels only |
+| `R` | Reset/Retry | All levels |
+
+**Design rules:**
+- `Z` = primary action, `X` = secondary action. Do not use `J`, `K`, or other distant keys.
+- `W`/`↑` move forward in 3D levels — **never bind them to jump in any level with forward movement**.
+- `Space` jumps in platformer levels and fires in shooter levels. Do not add jump to shooter levels.
+- Touch controls mirror keyboard: `⚔` = Z, `★` = X, `▲` = Space (context-appropriate label per level).
+
+### 5.3a Level 1 Controls (2D Platformer)
+
+| Action | Keyboard | Touch | Description |
+|--------|----------|-------|-------------|
+| Move Left/Right | `A`/`D` or `←`/`→` | `◀` `▶` | Walk |
+| Jump | `W` or `↑` or `Space` | `▲` | Gravity-based arc |
+| Attack | `Z` | `⚔` | Use weapon on nearby obstacle |
+| Use Item | `X` | `★` | Trigger environment effect (one-time, pick up first) |
+| Reset | `R` | `↺` | Restart round, increment death counter |
+
+### 5.3b Level 2 Controls (3D Arena)
+
+| Action | Keyboard | Touch | Description |
+|--------|----------|-------|-------------|
+| Move (all dirs) | `WASD` or Arrows | Left joystick | Camera-relative 8-dir movement |
+| Jump | `Space` | `▲` | **Space only** — W/↑ move forward, not jump |
+| Attack | `Z` | `⚔` | Weapon swing toward obstacle |
+| Use Item | `X` | `★` | Trigger environment effect |
+| Rotate Camera | `Q` / `E` | Right joystick / drag | Orbit camera left/right |
+| Reset | `R` | `↺` | Restart round |
+
+### 5.3c Level 3 Controls (2D Space Shooter)
+
+| Action | Keyboard | Touch | Description |
+|--------|----------|-------|-------------|
+| Move (all dirs) | `WASD` or Arrows | `◀` `▶` `▲` `▼` | 8-directional thrust |
+| Fire | `Z` or `Space` | `⚔` | Shoot toward nearest enemy (cooldown-gated) |
+| Bomb | `X` | `★` | One-use: destroys all enemies on screen |
+
+Touch controls display as on-screen button overlays. Only rendered on devices with touch support.
 
 ### 5.4 The Obstacle (Creature)
 
@@ -190,9 +227,9 @@ Generated from Word 2. The weapon:
 
 Generated from Word 3. This is a **one-time-use item** that:
 
-- **Must be picked up first (implemented):** The player must walk to the item's position on the field before it can be used. Pressing K/X does nothing until the item has been collected.
-- **Pickup cue (implemented):** A floating, bobbing icon with a pulsing glow appears on the play field (at ~35% of canvas width) showing the item name and `[K]` key hint. The icon is an **LLM-generated shape visual** based on the environment keyword (e.g., a lightning bolt shape for "Lightning", a flame shape for "Fire") — rendered with `drawVisual()` just like creature and weapon sprites. Falls back to the first letter of the keyword if no visual is available. Disappears once picked up.
-- **HUD states (implemented):** Before pickup the HUD shows `⚡ [Keyword] (find it!)` in gray. After pickup it shows `⚡ [Item Name] [K/X]` in blue. After use it shows `⚡ [Item Name] (used)` in gray.
+- **Must be picked up first (implemented):** The player must walk to the item's position on the field before it can be used. Pressing X does nothing until the item has been collected.
+- **Pickup cue (implemented):** A floating, bobbing icon with a pulsing glow appears on the play field (at ~35% of canvas width) showing the item name and `[X]` key hint. The icon is an **LLM-generated shape visual** based on the environment keyword (e.g., a lightning bolt shape for "Lightning", a flame shape for "Fire") — rendered with `drawVisual()` just like creature and weapon sprites. Falls back to the first letter of the keyword if no visual is available. Disappears once picked up.
+- **HUD states (implemented):** Before pickup the HUD shows `⚡ [Keyword] (find it!)` in gray. After pickup it shows `⚡ [Item Name] [X]` in blue. After use it shows `⚡ [Item Name] (used)` in gray.
 - **Pickup sound (implemented):** A short ascending two-tone triangle wave plays when the player walks over the item.
 - When activated, triggers a **keyword-matched targeted effect** aimed at the obstacle's position
 - **Targeted effect system (implemented):** Instead of a generic full-screen flash, effects are now matched to the environment keyword using a `style` field. Seven styles are supported:

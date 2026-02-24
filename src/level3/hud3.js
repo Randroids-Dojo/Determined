@@ -128,7 +128,14 @@ export function drawHUD3(ctx, score, timeRemaining, lives, maxLives, cw, ch, ene
     }
     ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`[K] BOMB${bombAvailable ? ' ✦' : ' ✕'}`, 10, ch - 12);
+    ctx.fillText(`[X] BOMB${bombAvailable ? ' ✦' : ' ✕'}`, 10, ch - 12);
+
+    // Fire indicator (right side of bottom strip)
+    ctx.shadowBlur = 6;
+    ctx.shadowColor = '#00FFFF';
+    ctx.fillStyle = '#00FFFF';
+    ctx.textAlign = 'right';
+    ctx.fillText('[Z/Space] FIRE', cw - 10, ch - 12);
   }
 
   ctx.restore();

@@ -41,11 +41,21 @@ function onKeyUp(e) {
 function updateActionsFromKeys() {
   actions.left = !!(keys['ArrowLeft'] || keys['KeyA']);
   actions.right = !!(keys['ArrowRight'] || keys['KeyD']);
-  actions.jump = !!(keys['ArrowUp'] || keys['KeyW'] || keys['Space']);
+  // Level 2 (3D): W/Up = move forward, Space = jump only.
+  // Level 3 (space shooter): no jumping — Space also fires (mapped to attack below).
+  // Level 1 (platformer): W/Up/Space all jump.
+  if (level2Active) {
+    actions.jump = !!(keys['Space']);
+  } else if (level3Active) {
+    actions.jump = false;
+  } else {
+    actions.jump = !!(keys['ArrowUp'] || keys['KeyW'] || keys['Space']);
+  }
   actions.forward = !!(keys['ArrowUp'] || keys['KeyW']);
   actions.backward = !!(keys['ArrowDown'] || keys['KeyS']);
-  actions.attack = !!(keys['KeyJ'] || keys['KeyZ']);
-  actions.item = !!(keys['KeyK'] || keys['KeyX']);
+  // In Level 3, Space also fires (no jump on a spaceship)
+  actions.attack = !!(keys['KeyZ'] || (level3Active && keys['Space']));
+  actions.item = !!(keys['KeyX']);
   actions.reset = !!keys['KeyR'];
 
   // Keyboard → analog movement (binary -1/0/+1)
@@ -350,6 +360,7 @@ function updateActionsFromTouch3D() {
 // ── Level switching ──
 
 let level2Active = false;
+let level3Active = false;
 
 /**
  * Show Level 2 touch controls (dual-stick + action buttons).
@@ -371,6 +382,7 @@ export function showTouch3DControls() {
  */
 export function showTouchL1Controls() {
   level2Active = false;
+  level3Active = false;
   if (!('ontouchstart' in window)) return;
 
   const l1 = document.getElementById('touch-controls');
@@ -379,6 +391,29 @@ export function showTouchL1Controls() {
   if (l2) l2.style.display = 'none';
 
   // Reset joystick state
+  joystickActive = false;
+  joystickX = 0;
+  joystickY = 0;
+  joystickTouchId = null;
+  cameraTouchId = null;
+  cameraDeltaX = 0;
+  cameraDeltaY = 0;
+  touch3dBtns = {};
+}
+
+/**
+ * Show Level 3 touch controls (same L1 buttons, but Space fires instead of jumping).
+ */
+export function showTouchL3Controls() {
+  level2Active = false;
+  level3Active = true;
+  if (!('ontouchstart' in window)) return;
+
+  const l1 = document.getElementById('touch-controls');
+  const l2 = document.getElementById('touch-controls-3d');
+  if (l1) l1.style.display = 'flex';
+  if (l2) l2.style.display = 'none';
+
   joystickActive = false;
   joystickX = 0;
   joystickY = 0;

@@ -43,14 +43,14 @@ export function drawHUD(ctx, player, weapon, envItem, deaths, elapsedMs) {
   // ── Weapon name ──
   const weaponX = 160;
   ctx.fillStyle = COLOR_ACCENT;
-  ctx.fillText(`⚔ ${weapon?.name || '---'}`, weaponX, hpY + 10);
+  ctx.fillText(`⚔ ${weapon?.name || '---'} [Z]`, weaponX, hpY + 10);
 
   // ── Environment item ──
   const itemX = 380;
   const itemLabel = envItem?.keyword ? envItem.keyword.charAt(0).toUpperCase() + envItem.keyword.slice(1) : '???';
   if (envItem && envItem.pickedUp && !envItem.used) {
     ctx.fillStyle = '#44DDFF';
-    ctx.fillText(`⚡ ${envItem.name} [K/X]`, itemX, hpY + 10);
+    ctx.fillText(`⚡ ${envItem.name} [X]`, itemX, hpY + 10);
   } else if (envItem?.used) {
     ctx.fillStyle = '#666';
     ctx.fillText(`⚡ ${envItem.name} (used)`, itemX, hpY + 10);

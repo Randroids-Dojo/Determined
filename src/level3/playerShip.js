@@ -8,7 +8,7 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 const SHIP_SPEED = 0.15;       // acceleration per ms
 const SHIP_MAX_SPEED = 4;      // px/frame equivalent
 const SHIP_FRICTION = 0.92;    // velocity damping per update
-const SHOOT_INTERVAL = 400;    // ms between auto-shots
+const SHOOT_INTERVAL = 250;    // ms between shots (manual fire)
 const INVINCIBLE_DURATION = 2000; // ms of invincibility after hit
 const BULLET_SPEED = 6;        // px per frame (at 60fps)
 
