@@ -257,16 +257,18 @@ export function showLeaderboard(entries, onBack, onContinueToLevel2) {
       const secs = Math.floor(e.time);
       const mins = Math.floor(secs / 60);
       const s = secs % 60;
+      const scoreDisplay = typeof e.score === 'number' ? String(e.score).padStart(6, '0') : '—';
       return `<tr>
         <td>${i + 1}</td>
         <td>${escapeHtml(e.initials)}</td>
         <td>${e.deaths}</td>
         <td>${mins}:${String(s).padStart(2, '0')}</td>
+        <td class="score-col">${scoreDisplay}</td>
         <td class="words-col">${escapeHtml(e.word_1)} / ${escapeHtml(e.word_2)} / ${escapeHtml(e.word_3)}</td>
       </tr>`;
     }).join('');
   } else {
-    rows = '<tr><td colspan="5">No entries yet. Be the first!</td></tr>';
+    rows = '<tr><td colspan="6">No entries yet. Be the first!</td></tr>';
   }
 
   const continueBtn = onContinueToLevel2
@@ -279,7 +281,7 @@ export function showLeaderboard(entries, onBack, onContinueToLevel2) {
       <div class="leaderboard-table-wrapper">
         <table class="leaderboard-table">
           <thead>
-            <tr><th>#</th><th>Name</th><th>Deaths</th><th>Time</th><th>Words</th></tr>
+            <tr><th>#</th><th>Name</th><th>Deaths</th><th>Time</th><th>Score</th><th>Words</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -616,6 +618,11 @@ export function showAssetDetail(assetItem, onBack, onRegenerate) {
           <canvas id="asset-canvas-3d" width="300" height="300"></canvas>
           <p class="viewer-hint">Drag to rotate</p>
         </div>
+        <div class="asset-viewer-panel">
+          <p class="viewer-label">VECTOR</p>
+          <canvas id="asset-canvas-vec" width="300" height="300"></canvas>
+          <p class="viewer-hint">Level 3 style</p>
+        </div>
       </div>
     </div>
   `;
@@ -632,6 +639,7 @@ export function showAssetDetail(assetItem, onBack, onRegenerate) {
   return {
     canvas2d: document.getElementById('asset-canvas-2d'),
     canvas3d: document.getElementById('asset-canvas-3d'),
+    canvasVec: document.getElementById('asset-canvas-vec'),
   };
 }
 

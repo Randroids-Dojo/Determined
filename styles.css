@@ -349,6 +349,11 @@ body {
   color: #888;
 }
 
+.score-col {
+  font-family: monospace;
+  color: #aad4ff;
+}
+
 /* ── Touch controls ── */
 #touch-controls {
   position: absolute;
