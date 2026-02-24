@@ -102,11 +102,11 @@ const JSON_SCHEMA = `{
     },
     "visual": {
       "base_shape": "circle | rectangle | triangle",
-      "width": "number 20-30",
-      "height": "number 20-30",
+      "width": "number 44-50",
+      "height": "number 44-50",
       "color_primary": "hex color",
       "color_secondary": "hex color",
-      "features": "array of 2-5 shape objects (see feature shape docs) — small iconic logo"
+      "features": "array of 6-10 shape objects (see feature shape docs) — bold iconic pickup"
     }
   }
 }`;
@@ -182,7 +182,15 @@ Rules:
 - The environment effect should affect BOTH player and obstacle for strategic gameplay.
 - Use 12-18 features per creature. The FIRST feature should be a large "body" ellipse. Then add head, eyes (with pupils), nose, mouth, ears, 4 legs (use roundedRect with cornerRadius 3-5), and creature-specific features (mane, wings, horns, tail, shell, tentacles, etc.).
 - Use a color palette: primary body color, slightly darker shade for limbs, lighter shade for belly/snout, dark accent for nose/pupils.
-- The environment item's visual is a small 20-30px pickup icon. Use 2-5 features to build a simple, recognizable symbol of "${words.environment}" (e.g. a lightning bolt, snowflake, flame, raindrop, tornado shape). Keep it compact.
+- The environment item's visual is a 44-50px pickup icon. Use 6-10 features to build a BOLD, recognizable symbol of "${words.environment}" that fills ~80% of the canvas. Start with a large background glow circle, then build the icon shape on top using polygons, lines, and ellipses. Choose the style closest to "${words.environment}":
+  - LIGHTNING/ELECTRICITY/BOLT: Draw a classic zigzag bolt polygon. Example for 48x48: { "type":"polygon","label":"bolt","points":[[28,2],[38,18],[28,18],[36,46],[18,30],[26,30],[16,2]],"color":"#FFE000" }. Add a bright center circle glow. Colors: yellow #FFE000, white #FFFFFF.
+  - FIRE/FLAME/HEAT: Draw 2-3 tall narrow ellipses (radiusX≈6, radiusY≈14) at staggered heights. Colors: red #FF3300, orange #FF8800, yellow #FFD000.
+  - ICE/SNOW/FREEZE/FROST: Draw 6 lines radiating from center as a snowflake plus a center circle. Colors: icy blue #88CCFF, white #FFFFFF.
+  - WIND/TORNADO/HURRICANE: Draw 3-4 curved arcs that spiral inward, plus a tapered triangle at bottom. Colors: sky blue #AADDFF, white #FFFFFF.
+  - EXPLOSION/BLAST/EARTHQUAKE: Draw a jagged starburst polygon with spiky points radiating from center, plus a bright center circle. Colors: orange #FF6600, yellow #FFD700.
+  - BEAM/LASER/LIGHT/RADIATION: Draw a tall thin rectangle (the beam) topped with a large bright circle. Colors: cyan #00FFFF, white #FFFFFF.
+  - RAIN/WATER/HAIL/FLOOD: Draw 4-5 small teardrop ellipses (radiusX≈4, radiusY≈9) scattered around the canvas. Color: blue #3399FF.
+  Apply whichever of these styles best matches "${words.environment}", adapting the colors to fit the concept.
 - The environment item's visual_effect.style controls the targeted animation when the item is activated. Choose the best match for "${words.environment}": "bolt" for lightning/electricity/energy, "flames" for fire/heat/lava/magma, "freeze" for ice/snow/cold/frost, "wind" for tornado/hurricane/gust/storm, "explosion" for earthquake/shockwave/meteor/bomb, "beam" for laser/light/solar/radiation, "rain" for rain/hail/acid/flood.
 - Position features relative to the base shape (0,0 is top-left, width/height is bottom-right). Remember: circle/ellipse x,y is the CENTER, rectangle/roundedRect x,y is the TOP-LEFT.
 - All numbers must be within the specified ranges.
@@ -512,12 +520,12 @@ function sanitizeData(data) {
     }
     if (e.visual && typeof e.visual === 'object') {
       e.visual.base_shape = oneOf(e.visual.base_shape, ['circle', 'ellipse', 'rectangle', 'triangle'], 'circle');
-      e.visual.width = clampNum(e.visual.width, 16, 40, 24);
-      e.visual.height = clampNum(e.visual.height, 16, 40, 24);
+      e.visual.width = clampNum(e.visual.width, 30, 60, 48);
+      e.visual.height = clampNum(e.visual.height, 30, 60, 48);
       e.visual.color_primary = hexColor(e.visual.color_primary, '#FFD700');
       e.visual.color_secondary = hexColor(e.visual.color_secondary, '#FFFFFF');
       if (Array.isArray(e.visual.features)) {
-        e.visual.features = e.visual.features.slice(0, 5).map(sanitizeFeature).filter(Boolean);
+        e.visual.features = e.visual.features.slice(0, 12).map(sanitizeFeature).filter(Boolean);
       } else {
         e.visual.features = [];
       }

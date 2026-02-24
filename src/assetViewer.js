@@ -72,7 +72,9 @@ export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type) {
   scene.add(rimLight);
 
   // Build 3D mesh from visual data
-  meshGroup = build3DMesh(visual);
+  meshGroup = (type === 'environment')
+    ? buildEnvironment3DMesh(entityData)
+    : build3DMesh(visual);
   scene.add(meshGroup);
 
   // Auto-fit camera to model size
@@ -142,8 +144,9 @@ export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type) {
       cw / 2, ch / 2 + bob, 0,
       cw / 2, ch / 2 + bob, glowRadius,
     );
-    glow.addColorStop(0, `rgba(255, 215, 0, ${glowAlpha})`);
-    glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+    const glowRgb = hexToRgba(visual.color_primary, glowAlpha);
+    glow.addColorStop(0, glowRgb);
+    glow.addColorStop(1, hexToRgba(visual.color_primary, 0));
     ctx.fillStyle = glow;
     ctx.beginPath();
     ctx.arc(cw / 2, ch / 2 + bob, glowRadius, 0, Math.PI * 2);
@@ -652,6 +655,161 @@ export function stopAssetViewer() {
   meshGroup = null;
   canvasVec = null;
   entityType = null;
+}
+
+function hexToRgba(hex, alpha) {
+  const m = (hex || '#888888').match(/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/);
+  if (!m) return `rgba(255,215,0,${alpha})`;
+  return `rgba(${parseInt(m[1], 16)},${parseInt(m[2], 16)},${parseInt(m[3], 16)},${alpha})`;
+}
+
+/**
+ * Build an effect-themed 3D mesh for an environment item.
+ * Uses visual_effect.style for a handcrafted representation instead of
+ * the creature-centric body-part approach.
+ */
+function buildEnvironment3DMesh(entityData) {
+  const group = new THREE.Group();
+  const style = entityData?.visual_effect?.style || 'explosion';
+  const col1 = parseColor(entityData?.visual_effect?.color_primary || entityData?.visual?.color_primary, 0xFFD700);
+  const col2 = parseColor(entityData?.visual_effect?.color_secondary || entityData?.visual?.color_secondary, 0xFFFFFF);
+
+  const mat1 = new THREE.MeshStandardMaterial({ color: col1, roughness: 0.25, metalness: 0.5, emissive: col1, emissiveIntensity: 0.55 });
+  const mat2 = new THREE.MeshStandardMaterial({ color: col2, roughness: 0.25, metalness: 0.4, emissive: col2, emissiveIntensity: 0.45 });
+
+  switch (style) {
+    case 'bolt': {
+      // Extruded lightning bolt polygon
+      const shape = new THREE.Shape();
+      shape.moveTo(0.3, 1.4);
+      shape.lineTo(0.65, 1.4);
+      shape.lineTo(0.05, 0.05);
+      shape.lineTo(0.45, 0.05);
+      shape.lineTo(-0.15, -1.4);
+      shape.lineTo(-0.5, -1.4);
+      shape.lineTo(0.05, -0.05);
+      shape.lineTo(-0.3, -0.05);
+      shape.closePath();
+      const boltGeo = new THREE.ExtrudeGeometry(shape, { depth: 0.3, bevelEnabled: true, bevelSize: 0.04, bevelThickness: 0.04 });
+      group.add(new THREE.Mesh(boltGeo, mat1));
+      // Bright core sphere at center
+      const coreGeo = new THREE.SphereGeometry(0.2, 8, 8);
+      group.add(new THREE.Mesh(coreGeo, mat2));
+      break;
+    }
+    case 'flames': {
+      for (let i = 0; i < 3; i++) {
+        const h = 1.8 - i * 0.3;
+        const flameGeo = new THREE.ConeGeometry(0.22 - i * 0.04, h, 6);
+        const mesh = new THREE.Mesh(flameGeo, i === 1 ? mat1 : mat2);
+        const a = (i / 3) * Math.PI * 2;
+        mesh.position.set(Math.cos(a) * 0.22, h * 0.5 - 0.75, Math.sin(a) * 0.22);
+        group.add(mesh);
+      }
+      break;
+    }
+    case 'freeze': {
+      // Central crystal sphere
+      group.add(new THREE.Mesh(new THREE.SphereGeometry(0.28, 10, 10), mat2));
+      // 6 equatorial spikes
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 1.0, 4), mat1);
+        spike.position.set(Math.cos(a) * 0.62, Math.sin(a) * 0.62, 0);
+        spike.rotation.z = a - Math.PI / 2;
+        group.add(spike);
+      }
+      // Top and bottom spikes
+      const topSpike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 1.2, 4), mat1);
+      topSpike.position.y = 0.72;
+      group.add(topSpike);
+      const botSpike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 1.2, 4), mat1);
+      botSpike.rotation.z = Math.PI;
+      botSpike.position.y = -0.72;
+      group.add(botSpike);
+      break;
+    }
+    case 'wind': {
+      // Tornado: stacked torus rings shrinking as they rise
+      for (let i = 0; i < 5; i++) {
+        const r = 0.75 - i * 0.12;
+        const torusGeo = new THREE.TorusGeometry(r, 0.07, 8, 28);
+        const mesh = new THREE.Mesh(torusGeo, mat1);
+        mesh.position.y = i * 0.5 - 1.0;
+        mesh.rotation.x = Math.PI / 2;
+        group.add(mesh);
+      }
+      // Tapered tip cone
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.5, 6), mat2);
+      tip.position.y = 1.5;
+      group.add(tip);
+      break;
+    }
+    case 'explosion': {
+      // Central sphere
+      group.add(new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 12), mat1));
+      // Radiating spikes in all directions
+      const dirs = [
+        [1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1],
+        [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
+        [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
+      ];
+      for (const [dx, dy, dz] of dirs) {
+        const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        const spike = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.65, 4), mat2);
+        spike.position.set(dx / len * 0.68, dy / len * 0.68, dz / len * 0.68);
+        spike.lookAt(0, 0, 0);
+        spike.rotateX(Math.PI / 2);
+        group.add(spike);
+      }
+      break;
+    }
+    case 'beam': {
+      // Vertical glowing column
+      group.add(new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.22, 2.5, 8), mat1));
+      // Glowing orb at top
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.32, 10, 10), mat2);
+      orb.position.y = 1.5;
+      group.add(orb);
+      // Ring at base
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.06, 8, 24), mat2);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = -1.1;
+      group.add(ring);
+      break;
+    }
+    case 'rain': {
+      // Raindrop cluster
+      const drops = [[-0.45, 0.7, 0], [0, 0.95, 0], [0.45, 0.7, 0], [-0.25, -0.1, 0], [0.25, -0.1, 0]];
+      for (const [px, py, pz] of drops) {
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.38, 6), mat1);
+        const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6), mat2);
+        body.position.set(px, py, pz);
+        cap.position.set(px, py + 0.19, pz);
+        group.add(body);
+        group.add(cap);
+      }
+      break;
+    }
+    default: {
+      // Generic glowing orb with ring
+      group.add(new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), mat1));
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(1.05, 0.07, 8, 32), mat2);
+      ring.rotation.x = Math.PI / 2;
+      group.add(ring);
+      break;
+    }
+  }
+
+  // Glowing base platform
+  const base = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.85, 0.95, 0.1, 20),
+    new THREE.MeshStandardMaterial({ color: col1, roughness: 0.7, metalness: 0.3, emissive: col1, emissiveIntensity: 0.3 }),
+  );
+  base.position.y = -1.3;
+  group.add(base);
+
+  return group;
 }
 
 function parseColor(str, fallback) {
