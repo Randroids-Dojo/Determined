@@ -54,6 +54,10 @@ export const STATE_LEVEL2_INTRO = 'level2_intro';
 export const STATE_LEVEL2_LOADING = 'level2_loading';
 export const STATE_LEVEL2_PLAYING = 'level2_playing';
 export const STATE_LEVEL2_VICTORY = 'level2_victory';
+export const STATE_LEVEL3_INTRO = 'level3_intro';
+export const STATE_LEVEL3_LOADING = 'level3_loading';
+export const STATE_LEVEL3_PLAYING = 'level3_playing';
+export const STATE_LEVEL3_VICTORY = 'level3_victory';
 export const STATE_ASSETS = 'assets';
 export const STATE_ASSET_DETAIL = 'asset_detail';
 

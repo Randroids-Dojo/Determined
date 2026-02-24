@@ -9,6 +9,7 @@ import {
   STATE_MENU, STATE_WORD_ENTRY, STATE_LOADING, STATE_PLAYING,
   STATE_VICTORY, STATE_LEADERBOARD,
   STATE_LEVEL2_INTRO, STATE_LEVEL2_LOADING, STATE_LEVEL2_PLAYING, STATE_LEVEL2_VICTORY,
+  STATE_LEVEL3_INTRO, STATE_LEVEL3_LOADING, STATE_LEVEL3_PLAYING, STATE_LEVEL3_VICTORY,
   STATE_ASSETS, STATE_ASSET_DETAIL,
 } from './constants.js';
 import { initInput, pollInput, snapshotKeys, showTouchL1Controls, hideAllTouchControls } from './input.js';
@@ -31,9 +32,11 @@ import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
   showLevel2Intro, showLevel2Loading, showLevel2Victory,
+  showLevel3Intro, showLevel3Loading, showLevel3Victory,
   showAssetsScreen, showAssetDetail,
 } from './ui.js';
 import { startLevel2, cleanupLevel2 } from './level2/level2.js';
+import { startLevel3, cleanupLevel3 } from './level3/level3.js';
 import { saveAssets, getAssetList } from './assetStore.js';
 import { startAssetViewer, stopAssetViewer } from './assetViewer.js';
 
@@ -56,10 +59,12 @@ let elapsedMs = 0;
 let lastFrame = 0;
 let resetActive = false; // edge-detect reset so it only fires once per press
 
-// ── Level 2 state ──
-let llmData = null;       // Store LLM data for Level 2 reuse
+// ── Level 2 / 3 state ──
+let llmData = null;       // Store LLM data for Level 2/3 reuse
 let level1Deaths = 0;     // Deaths from Level 1 carry forward
 let level1Time = 0;       // Time from Level 1 carries forward
+let level2Deaths = 0;     // Deaths from Level 2 carry forward
+let level2Time = 0;       // Time from Level 2 carries forward
 
 // ── Fallback data (used if LLM fails) ──
 const FALLBACK_DATA = {
@@ -291,6 +296,38 @@ function onLevel2Victory(totalDeaths, totalTimeMs) {
   cleanupLevel2();
   hideAllTouchControls();
 
+  // Store Level 2 stats for Level 3
+  level2Deaths = totalDeaths;
+  level2Time = totalTimeMs;
+
+  showLevel2Victory(totalDeaths, totalTimeMs, words, goToLevel3Intro, goToMenu);
+}
+
+// ── Level 3 transitions ──
+
+function goToLevel3Intro() {
+  state = STATE_LEVEL3_INTRO;
+  hideAllTouchControls();
+  showLevel3Intro(words, startLevel3Game);
+}
+
+async function startLevel3Game() {
+  state = STATE_LEVEL3_LOADING;
+  showLevel3Loading();
+
+  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  state = STATE_LEVEL3_PLAYING;
+  hideUI();
+
+  startLevel3(llmData, level2Deaths, level2Time, words, onLevel3Victory);
+}
+
+function onLevel3Victory(totalDeaths, totalTimeMs, score) {
+  state = STATE_LEVEL3_VICTORY;
+  cleanupLevel3();
+  hideAllTouchControls();
+
   const onSubmitScore = async (initials) => {
     try {
       await fetch('/api/leaderboard', {
@@ -303,6 +340,7 @@ function onLevel2Victory(totalDeaths, totalTimeMs) {
           word_1: words.creature,
           word_2: words.weapon,
           word_3: words.environment,
+          score,
         }),
       });
     } catch (err) {
@@ -311,7 +349,7 @@ function onLevel2Victory(totalDeaths, totalTimeMs) {
     goToLeaderboard();
   };
 
-  showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore, goToMenu);
+  showLevel3Victory(totalDeaths, totalTimeMs, score, words, onSubmitScore, goToMenu);
 }
 
 /**

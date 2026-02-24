@@ -1202,3 +1202,55 @@ body {
     gap: 10px;
   }
 }
+
+/* ── Level 3 Button ── */
+.btn-level3 {
+  background: linear-gradient(135deg, #006688, #00ccff);
+  color: #fff;
+  border-color: #00aaee;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(0, 204, 255, 0.5);
+}
+
+.btn-level3:hover {
+  background: linear-gradient(135deg, #0077aa, #00ddff);
+  transform: scale(1.03);
+  box-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}
+
+/* ── Level 3 Badge ── */
+.level3-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, #006688, #00ccff);
+  color: #fff;
+  padding: 4px 16px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  margin-bottom: 12px;
+  text-shadow: 0 0 6px rgba(0, 204, 255, 0.6);
+}
+
+/* ── Level 3 Intro Screen ── */
+.level3-intro-screen h2 {
+  color: #00ccff;
+}
+
+/* ── Level 3 Loading ── */
+.level3-spinner {
+  border-top-color: #00ccff !important;
+}
+
+.level3-loading-badge {
+  font-size: 0.75rem;
+  color: #00ccff;
+  letter-spacing: 0.2em;
+  font-weight: bold;
+}
+
+/* ── Level 3 Victory ── */
+.level3-victory-screen h2 {
+  color: #00ccff;
+  text-shadow: 0 0 20px rgba(0, 204, 255, 0.4);
+}

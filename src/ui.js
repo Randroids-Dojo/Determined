@@ -378,7 +378,7 @@ export function showLevel2Loading() {
 
 // ── Level 2 Victory Screen ──
 
-export function showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore, onBack) {
+export function showLevel2Victory(totalDeaths, totalTimeMs, words, onContinue, onBack) {
   clearOverlay();
   showOverlay();
   const secs = Math.floor(totalTimeMs / 1000);
@@ -387,9 +387,113 @@ export function showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore
 
   overlayEl.innerHTML = `
     <div class="level2-victory-screen">
-      <div class="level2-badge victory-badge">COMPLETE</div>
+      <div class="level2-badge victory-badge">LEVEL 2 CLEAR</div>
+      <h2>THE ARENA FALLS</h2>
+      <p class="victory-subtitle">The third dimension yields. One final sector remains.</p>
+      <div class="final-stats">
+        <div class="stat-row">
+          <span class="stat-label">Deaths So Far</span>
+          <span class="stat-value">${totalDeaths}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Time</span>
+          <span class="stat-value">${mins}:${String(s).padStart(2, '0')}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Words</span>
+          <span class="stat-value">${escapeHtml(words?.creature)} / ${escapeHtml(words?.weapon)} / ${escapeHtml(words?.environment)}</span>
+        </div>
+      </div>
+      <p class="victory-flavor">"The 3D arena could not contain you. The cosmos awaits."</p>
+      <button id="btn-continue-l3" class="btn btn-level2">CONTINUE TO LEVEL 3</button>
+      <button id="btn-l2v-back" class="btn btn-secondary">BACK TO MENU</button>
+    </div>
+  `;
+
+  document.getElementById('btn-continue-l3').addEventListener('click', () => {
+    sfxMenuSelect();
+    onContinue();
+  });
+  document.getElementById('btn-l2v-back').addEventListener('click', () => {
+    sfxMenuSelect();
+    onBack();
+  });
+}
+
+// ── Level 3 Intro Screen ──
+
+export function showLevel3Intro(words, onStart) {
+  clearOverlay();
+  showOverlay();
+  overlayEl.innerHTML = `
+    <div class="level2-intro-screen level3-intro-screen">
+      <div class="level3-badge">LEVEL 3</div>
+      <h2>ENTERING THE VOID</h2>
+      <p class="level2-subtitle">They multiply in deep space. A swarm of the familiar.</p>
+      <div class="level2-info">
+        <p>Smaller versions of your ${escapeHtml(words?.creature || 'creature')} fill the sector.</p>
+        <p>Your ${escapeHtml(words?.weapon || 'weapon')} has become a ship's cannon.</p>
+        <p>The ${escapeHtml(words?.environment || 'environment')} warps the void around you.</p>
+      </div>
+      <div class="level2-controls-info">
+        <p class="controls-header">SPACE CONTROLS</p>
+        <div class="controls-grid">
+          <span class="key">WASD / ↑↓←→</span> <span>Move ship</span>
+          <span class="key">J / Z</span> <span>Shoot burst</span>
+          <span class="key">Auto</span> <span>Ship fires at nearest enemy</span>
+        </div>
+      </div>
+      <p class="level2-objective">Survive 90 seconds. Kill as many as you can. 3 lives.</p>
+      <button id="btn-start-level3" class="btn btn-level3">ENTER THE VOID</button>
+    </div>
+  `;
+  document.getElementById('btn-start-level3').addEventListener('click', () => {
+    sfxMenuSelect();
+    onStart();
+  });
+}
+
+// ── Level 3 Loading Screen ──
+
+export function showLevel3Loading() {
+  clearOverlay();
+  showOverlay();
+  const flavors = [
+    'Scattering enemies across the void...',
+    'Calibrating vector cannons...',
+    'Deploying swarm coordinates...',
+    'Warping to deep space sector...',
+    'Generating the wireframe cosmos...',
+    'Plotting enemy trajectories...',
+    'Charging the vector grid...',
+    'Scanning for hostile signatures...',
+    'Initializing neon weapons systems...',
+    'Engaging space physics module...',
+  ];
+  const flavor = flavors[Math.floor(Math.random() * flavors.length)];
+  overlayEl.innerHTML = `
+    <div class="loading-screen level2-loading level3-loading">
+      <div class="loading-spinner level3-spinner"></div>
+      <p class="level3-loading-badge">LEVEL 3</p>
+      <p class="loading-text">${flavor}</p>
+    </div>
+  `;
+}
+
+// ── Level 3 Victory Screen ──
+
+export function showLevel3Victory(totalDeaths, totalTimeMs, score, words, onSubmitScore, onBack) {
+  clearOverlay();
+  showOverlay();
+  const secs = Math.floor(totalTimeMs / 1000);
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+
+  overlayEl.innerHTML = `
+    <div class="level2-victory-screen level3-victory-screen">
+      <div class="level3-badge victory-badge">COMPLETE</div>
       <h2>YOU ARE TRULY DETERMINED</h2>
-      <p class="victory-subtitle">Both levels conquered. Both dimensions defeated.</p>
+      <p class="victory-subtitle">All three levels conquered. All dimensions defeated.</p>
       <div class="final-stats">
         <div class="stat-row">
           <span class="stat-label">Total Deaths</span>
@@ -400,11 +504,15 @@ export function showLevel2Victory(totalDeaths, totalTimeMs, words, onSubmitScore
           <span class="stat-value">${mins}:${String(s).padStart(2, '0')}</span>
         </div>
         <div class="stat-row">
+          <span class="stat-label">Space Score</span>
+          <span class="stat-value">${String(score).padStart(6, '0')}</span>
+        </div>
+        <div class="stat-row">
           <span class="stat-label">Words</span>
           <span class="stat-value">${escapeHtml(words?.creature)} / ${escapeHtml(words?.weapon)} / ${escapeHtml(words?.environment)}</span>
         </div>
       </div>
-      <p class="victory-flavor">"Your words shaped reality. Reality fought back. You won anyway."</p>
+      <p class="victory-flavor">"Three levels. Three dimensions. One unstoppable stick figure."</p>
       <div class="initials-entry">
         <label>Enter your initials:
           <input type="text" id="initials" maxlength="3" placeholder="AAA" autocomplete="off" />
