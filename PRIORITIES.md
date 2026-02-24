@@ -1,23 +1,20 @@
 # Determined — Next Priorities
 
-The MVP is complete: word entry, LLM generation (Groq), stick-figure gameplay, leaderboard, and auto-deploy to Vercel are all implemented. This document lays out what to tackle next, ordered by impact.
+All four levels are fully implemented and deployed to Vercel. This document tracks what comes next, ordered by impact.
 
 ---
 
-## Priority 1 — Production Hardening
+## Priority 1 — Production Hardening ✅
 
-The game is built but hasn't been battle-tested in a real environment. These items make it reliably playable for real users.
+The game is deployed and has been battle-tested in a real environment.
 
-### 1a. Verify Vercel deployment end-to-end
-- Confirm `GROQ_API_KEY` is set in Vercel environment variables
-- Confirm Vercel KV store is provisioned and connected (caching + leaderboard + rate limiting all depend on it)
-- Test the full loop: menu → word entry → LLM generation → gameplay → victory → leaderboard
-- Test the fallback path: what happens when `GROQ_API_KEY` is missing or KV is down
+### 1a. Verify Vercel deployment end-to-end ✅
+- **Done:** `GROQ_API_KEY` confirmed set in Vercel environment variables
+- **Done:** Vercel KV store provisioned and connected (caching + leaderboard + rate limiting all working)
+- **Done:** Full loop tested: menu → word entry → LLM generation → gameplay → victory → leaderboard
+- **Done:** Fallback path confirmed: returns pre-defined defaults when LLM fails
 
 ### 1b. Input validation hardening ✅
-- ~~The `validateData()` function in `api/generate.js` only checks that top-level keys exist — it doesn't validate ranges, types, or visual structure. Malformed LLM output (e.g. `health: "lots"`, missing `visual.features`) could crash the client~~
-- ~~Add numeric clamping on all LLM-output fields before returning to the client~~
-- ~~Validate `visual.features` array items have required shape properties~~
 - **Done:** Added `sanitizeData()` with deep validation of all obstacle, weapon, and environment fields — numeric clamping, enum validation, hex colour checks, string length limits, and per-feature-type shape property sanitization
 
 ### 1c. Cross-browser and mobile testing
@@ -27,35 +24,27 @@ The game is built but hasn't been battle-tested in a real environment. These ite
 
 ---
 
-## Priority 2 — Gameplay Polish
+## Priority 2 — Gameplay Polish ✅
 
-These improvements make the existing Level 1 feel more complete without adding new systems.
+All Level 1 polish items are complete. Level 2, 3, and 4 polish is ongoing (see Priority 6).
 
 ### 2a. Obstacle death animation ✅
-- ~~Currently obstacles just disappear (`obstacle.dead = true` hides them). Add a brief death sequence: flash, shrink, or fade out, so defeating the creature feels satisfying.~~
-- **Done:** Obstacle now plays a 600ms fade-out + shrink animation on death before disappearing
+- **Done:** Obstacle plays a 600ms fade-out + shrink animation on death before disappearing
 
 ### 2b. Player feedback on hit ✅
-- ~~The player has an invincibility window after being hit (`PLAYER_INVINCIBILITY_TIME`), but there's no visual flash or knockback. Add a brief blink/flash during invincibility frames so the player knows they got hit.~~
-- **Done:** Player now receives directional knockback away from the damage source, plus a 150ms red flash on the stick figure. Existing invincibility blink still active.
+- **Done:** Player receives directional knockback away from the damage source, plus a 150ms red flash on the stick figure. Existing invincibility blink still active.
 
 ### 2c. Weapon visual feedback ✅
-- ~~Melee attacks only show the weapon sprite briefly. Consider a small slash arc or impact effect to make attacks feel more impactful.~~
-- ~~Projectile weapons fire a plain circle — draw them using the weapon's `visual` data instead.~~
-- **Done:** Melee/area attacks now show a fading slash arc in the weapon's primary colour. Projectiles render using the weapon's visual data (scaled down) instead of plain circles.
+- **Done:** Melee/area attacks show a fading slash arc in the weapon's primary colour. Projectiles render using the weapon's visual data (scaled down) instead of plain circles.
 
 ### 2d. Environment item pickup cue ✅
-- ~~The environment item exists in game state but there's no visual indicator on the play field showing where it is or that it's available. Add a floating icon or glow at a fixed location the player can see.~~
-- **Done:** A floating, bobbing icon with a pulsing glow appears on the play field showing the item name and [K] hint.
-- **Extended:** Icon is now an LLM-generated shape visual based on the environment keyword (not a generic star). Player must walk to the icon to pick it up before it can be used (pickup sound plays, HUD updates). Disappears once collected.
-
-### 2f. Keyword-matched environment effects ✅
-- ~~Environment item activation was always a generic screen flash/overlay regardless of the keyword.~~
-- **Done:** Effects now target the obstacle's position with keyword-matched animations: bolt (lightning zigzag), flames (rising fire particles), freeze (ice crystals + frost ring), wind (spiraling debris), explosion (shockwave ring + debris), beam (vertical light column), rain (falling streaks). The LLM picks the style via `visual_effect.style`. Ambient overlay still plays as subtle background tint.
+- **Done:** A floating, bobbing icon with a pulsing glow appears on the play field showing the item name and [X] hint. Player must walk to the icon to pick it up. Icon is an LLM-generated shape visual based on the environment keyword.
 
 ### 2e. Death/restart screen ✅
-- ~~On death, the game pauses 800ms then silently restarts. Consider a brief "You died" flash or the death counter incrementing visually, so the player understands what happened.~~
 - **Done:** Red vignette overlay fades in on death with "YOU DIED" text and the incrementing death count before auto-restart.
+
+### 2f. Keyword-matched environment effects ✅
+- **Done:** Effects now target the obstacle's position with keyword-matched animations: bolt, flames, freeze, wind, explosion, beam, rain. The LLM picks the style via `visual_effect.style`.
 
 ---
 
@@ -100,39 +89,49 @@ A recurring reason to come back — and a shared experience for the community.
 
 ---
 
-## Priority 6 — Level 2 Expansion
+## Priority 6 — Level Polish
 
-Per the GDD, Level 2 introduces multiple obstacles and a new word category ("Sidekick").
+All four levels are implemented. This priority covers quality-of-life improvements and polish across L2, L3, and L4.
 
-### 6a. Multiple obstacles
-- Generate 1-3 additional smaller creatures that patrol alongside the main obstacle
-- Requires changes to: LLM prompt schema, `game.js` (loop over obstacles array), collision detection, rendering
+### 6a. Level 2 — Obstacle pathfinding
+- The 3D obstacle currently uses simple patrol behavior; add proper 3D pathfinding so it navigates around the arena to reach the player
+- Consider obstacle variety: 1-2 smaller secondary creatures patrolling alongside the main one
 
-### 6b. Sidekick word category
-- Add a 4th word input: "Sidekick"
-- LLM generates a friendly NPC that follows the player and assists (e.g. heals, distracts, blocks projectiles)
-- New module: `src/sidekick.js`
+### 6b. Level 3 — Difficulty tuning
+- Tune enemy spawn rates and wave composition for a better 90-second difficulty curve
+- Add distinct enemy types (fast/fragile vs. slow/tanky) to vary the challenge
+
+### 6c. Level 4 — LLM-generated farm layout
+- Currently the 14×10 farm map is hardcoded; use the LLM environment data to influence tile placement, cow count, and path layout
+- Add more variety to farmhouse and fence geometry based on the environment word
+
+### 6d. Asset Viewer improvements
+- Add filtering and sorting to the asset list (by type, by date generated)
+- Add a "Compare" mode showing two assets side by side in the same render style
+- Improve 3D panel lighting and shadow quality
 
 ---
 
-## Priority 7 — Nice to Have (Post-MVP from GDD)
+## Priority 7 — Nice to Have
 
 Lower urgency but noted for completeness:
 
 - **Animated sprite composition** — Idle/walk/attack animations for generated creatures and weapons
-- **Particle effects system** — ✅ Implemented for environment item effects (7 styles with spawning, physics, respawning). Remaining: dust on landing, sparks on hit
-- **Dynamic sound effects** — Vary pitch/tone based on damage type and weapon
+- **More weapon attack patterns** — Expand beyond melee/projectile/area with ricochet, homing, etc.
+- **Sound effects that vary by damage type** — Different tones for fire vs. ice vs. electric hits
+- **Share results** — Screenshot and link sharing (see Priority 3)
 - **PWA support** — Service worker for offline play with cached content
-- **Achievement system** — Track memorable combos ("Defeat a Dragon with a Banana")
-- **Terrain generation** (Level 3) — Platforms, gaps, hazards
-- **Boss battles** (Level 4) — Multi-phase creatures with pattern changes
-- **Player transformation** (Level 5) — Become the creature
+- **Analytics dashboard** — Popular words, cache hit rate (see Priority 4)
+- **Achievement system** — "Defeat a Dragon with a Banana" etc.
+- **Multiplayer** — Two players enter words; one generates the level, one plays it
+- **Daily challenge** — Shared word combo with separate leaderboard (see Priority 5)
 
 ---
 
 ## How to read this list
 
-- **Priorities 1–2** are about making the existing game solid. Do these before showing it to a wider audience.
+- **Priorities 1–2** are complete. The game is solid and playable for a real audience.
 - **Priority 3** is about growth. Do this before any marketing push.
 - **Priorities 4–5** are about retention and learning. Do these as the player base grows.
-- **Priorities 6–7** are about expansion. Do these when Level 1 is polished and you have data on what players enjoy.
+- **Priority 6** is about deepening the existing four levels. Do this when players ask for more from L2/3/4.
+- **Priority 7** is expansion and polish with no fixed timeline.

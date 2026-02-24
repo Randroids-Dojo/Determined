@@ -262,7 +262,7 @@ Generated from Word 3. This is a **one-time-use item** that:
 - Affects player: true/false + how
 - Affects obstacle: true/false + how
 - Visual effect: ambient overlay type + targeted animation style + color palette
-- Pickup icon visual (small 20-30px shape-based icon composed from 2-5 features)
+- Pickup icon visual (44-50px shape-based icon composed from 6-10 features)
 - Screen shake intensity (0-10)
 
 **Examples of targeted effects in action:**
@@ -471,8 +471,8 @@ The LLM is asked to return the following structure:
     },
     "visual": {
       "base_shape": "circle | rectangle | triangle",
-      "width": "number - 20 to 30",
-      "height": "number - 20 to 30",
+      "width": "number - 44 to 50",
+      "height": "number - 44 to 50",
       "color_primary": "string - hex color",
       "color_secondary": "string - hex color",
       "features": [
@@ -501,9 +501,9 @@ Pre-defined fallback defaults ensure the game is always playable even if the LLM
 - Enum fields validated against allowed values (attack patterns, damage types, effect types, base shapes)
 - Hex colour strings validated with regex; invalid values replaced with defaults
 - String fields length-limited (names 60 chars, descriptions 200 chars)
-- `visual.features` arrays capped at 8 items for creatures/weapons, 5 for environment item icons; each feature sanitized per shape type (circle gets `radius`, rectangle gets `width`/`height`, triangle/polygon get validated `points` arrays, etc.)
+- `visual.features` arrays capped at 8 items for creatures/weapons, 12 for environment item icons; each feature sanitized per shape type (circle gets `radius`, rectangle gets `width`/`height`, triangle/polygon get validated `points` arrays, etc.)
 - Environment item `visual_effect.style` validated against 7 allowed styles (`bolt`, `flames`, `freeze`, `wind`, `explosion`, `beam`, `rain`); defaults to `explosion`
-- Environment item `visual` (pickup icon) dimensions clamped to 16-40px, colours validated, features capped at 5
+- Environment item `visual` (pickup icon) dimensions clamped to 30-60px, colours validated, features capped at 12
 
 This runs server-side before caching, so cached results are also sanitized. Client-side clamping in `createObstacle()`, `createWeapon()`, and `createEnvironmentItem()` provides a second layer of defense.
 
@@ -558,7 +558,7 @@ Check cache: GET obstacle:lion
 
 | Field | Type | Description |
 |-------|------|-------------|
-| initials | string (3 chars) | Player's initials (entered on Level 4 victory) |
+| initials | string (3 chars) | Player's initials (entered on victory) |
 | deaths | number | Total deaths across all 4 levels |
 | time | number | Total elapsed time in seconds across all 4 levels |
 | score | number | Level 3 space shooter kill score |
@@ -573,6 +573,8 @@ Check cache: GET obstacle:lion
 One single global leaderboard. Entries are submitted after completing all 4 levels. Ranked by:
 1. **Fewest deaths** (primary, across all levels)
 2. **Fastest total time** (tiebreaker)
+
+Score formula: `deaths * 10000 + time` (lower is better).
 
 The `score` (L3 kills) and `bottles` (L4 deliveries) are displayed as bonus stats but do not affect ranking order.
 
@@ -592,7 +594,8 @@ Key format: `leaderboard:entries` (sorted set, scored by deaths * 10000 + time)
 
 ### 10.5 Anti-Abuse
 
-- Rate limit on leaderboard submissions (1 per minute per IP)
+- Rate limit on leaderboard submissions: 1 per minute per IP, 20 per day per IP
+- Maximum 5 leaderboard entries stored per IP
 - Initials filtered for profanity
 - No duplicate submissions for identical word combos from the same IP within 1 minute
 
@@ -605,6 +608,7 @@ Key format: `leaderboard:entries` (sorted set, scored by deaths * 10000 + time)
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | Frontend | HTML5 Canvas + vanilla JS | Game rendering and logic |
+| 3D (Level 2) | Three.js | Arena scene, OrbitControls |
 | Styling | CSS | Menus, HUD overlay, responsive layout |
 | Audio | Web Audio API | Retro sound effects (no audio files) |
 | API | Vercel Serverless Functions (Node.js) | LLM proxy, rate limiting, cache |
@@ -616,68 +620,66 @@ Key format: `leaderboard:entries` (sorted set, scored by deaths * 10000 + time)
 
 ```
 Determined/
-├── index.html              # Entry point
-├── styles.css              # Global styles
-├── vercel.json             # Vercel config (routes, env)
-├── package.json            # Dependencies (for Vercel serverless only)
-├── GDD.md                  # This document
-├── PRIORITIES.md           # Prioritized post-MVP roadmap
+├── index.html
+├── styles.css
+├── vercel.json
+├── package.json
+├── GDD.md
+├── PRIORITIES.md
+├── README.md
 │
-├── src/                    # Frontend game code
-│   ├── game.js             # Main game loop, state machine, orchestration (all 4 levels)
-│   ├── constants.js        # Game balance constants, screen dimensions, flavor texts, states
-│   ├── input.js            # Keyboard + touch input handling (shared across all levels)
-│   ├── ui.js               # Menu screens, word entry, leaderboard, level intro/victory screens
+├── src/
+│   ├── game.js             # Main state machine + game loop
+│   ├── player.js           # L1 stick figure player
+│   ├── obstacle.js         # L1 creature AI
+│   ├── weapon.js           # L1 weapon mechanics
+│   ├── environment.js      # L1 environment item effects
+│   ├── renderer.js         # 2D canvas renderer / sprite composer
+│   ├── physics.js          # AABB collision, gravity
+│   ├── input.js            # Keyboard + touch input
 │   ├── audio.js            # Web Audio API sound effects
-│   ├── assetStore.js       # localStorage persistence for generated assets
-│   ├── assetViewer.js      # 2D/3D/vector/voxel asset preview viewer
+│   ├── hud.js              # L1 HUD
+│   ├── ui.js               # All menu/screen HTML overlays
+│   ├── constants.js        # Balance constants, 102 flavor texts
+│   ├── assetStore.js       # localStorage asset persistence
+│   ├── assetViewer.js      # 4-panel asset detail viewer (2D/3D/Vector/Voxel)
 │   │
-│   │   # Level 1 — 2D Platformer
-│   ├── player.js           # Stick figure player logic
-│   ├── obstacle.js         # Obstacle/creature AI and behavior
-│   ├── weapon.js           # Weapon mechanics and projectiles
-│   ├── environment.js      # Environment item effect
-│   ├── renderer.js         # Canvas 2D rendering / sprite composer
-│   ├── physics.js          # Gravity, collision detection (AABB)
-│   ├── hud.js              # HUD overlay (health, items, timer)
-│   │
-│   ├── level2/             # Level 2 — 3D Arena (Three.js)
-│   │   ├── level2.js       # Orchestrator + game loop
-│   │   ├── scene.js        # Three.js scene, camera, lighting
+│   ├── level2/
+│   │   ├── level2.js       # L2 orchestration
 │   │   ├── arena.js        # 3D arena geometry
-│   │   ├── player3d.js     # 3D player character
-│   │   ├── obstacle3d.js   # 3D creature AI
-│   │   ├── weapon3d.js     # 3D weapon attacks
-│   │   ├── environment3d.js# 3D environment effects
-│   │   └── hud3d.js        # HUD overlay for Level 2
+│   │   ├── scene.js        # Three.js scene setup
+│   │   ├── environment3d.js
+│   │   ├── obstacle3d.js
+│   │   ├── player3d.js
+│   │   ├── weapon3d.js
+│   │   └── hud3d.js
 │   │
-│   ├── level3/             # Level 3 — 2D Space Shooter (Asteroids-style)
-│   │   ├── level3.js       # Orchestrator + game loop
-│   │   ├── playerShip.js   # Ship movement + auto-aim
-│   │   ├── enemySwarm.js   # Enemy AI, spawning, bullets
-│   │   ├── spaceArena.js   # Parallax starfield + perspective grid
-│   │   ├── vectorRenderer.js # Vector/wireframe drawing
-│   │   └── hud3.js         # HUD for Level 3
+│   ├── level3/
+│   │   ├── level3.js       # L3 orchestration
+│   │   ├── spaceArena.js
+│   │   ├── playerShip.js
+│   │   ├── enemySwarm.js
+│   │   ├── vectorRenderer.js  # Neon wireframe renderer
+│   │   └── hud3.js
 │   │
-│   └── level4/             # Level 4 — Isometric Voxel Farm
-│       ├── level4.js       # Orchestrator + game loop
-│       ├── voxelRenderer.js# Isometric voxel rendering engine
-│       ├── farmEnvironment.js # Farm map, terrain, magic particles
-│       ├── cowObstacle.js  # Peaceful cow AI + milking mechanic
-│       ├── player4.js      # Isometric player movement + bottle carry
-│       └── hud4.js         # HUD for Level 4
+│   └── level4/
+│       ├── level4.js       # L4 orchestration
+│       ├── farmEnvironment.js  # 14×10 isometric farm map
+│       ├── cowObstacle.js  # Voxel cow AI + drawing
+│       ├── player4.js      # Isometric player movement
+│       ├── voxelRenderer.js   # Isometric voxel engine
+│       └── hud4.js
 │
-├── api/                    # Vercel serverless functions
-│   ├── generate.js         # LLM generation endpoint (Groq proxy, cache, rate limit)
-│   ├── leaderboard.js      # Leaderboard CRUD endpoint
-│   └── random-words.js     # Random word generator for word entry screen
+└── api/
+    ├── generate.js         # Groq proxy, cache, rate limit
+    ├── leaderboard.js      # Leaderboard CRUD (Vercel KV)
+    └── random-words.js     # Random word suggestions
 ```
 
 ### 11.3 Deployment
 
-Mirrors the Block-You pattern:
 - Vercel connected to GitHub repo (Randroids-Dojo/Determined)
-- Auto-deploys on every push to `master`
+- Auto-deploys on every push to `main`
 - Preview deployments on PRs
 - Environment variables set in Vercel dashboard:
   - `GROQ_API_KEY` -- Groq API key
@@ -722,6 +724,10 @@ Returns top 50 leaderboard entries.
 
 Submits a new leaderboard entry.
 
+#### `GET /api/random-words`
+
+Returns a set of random suggested words for creature, weapon, and environment categories. Used by the word entry screen to populate suggestion chips.
+
 ---
 
 ## 12. Loading Screen
@@ -730,7 +736,7 @@ While the LLM generates content (or cache is retrieved), the player sees a loadi
 
 ### Flavor Text (102 pre-written messages)
 
-Randomly selected from a pool of 104 messages in `constants.js`. Examples:
+Randomly selected from a pool of 102 messages in `constants.js`. Examples:
 
 1. "Consulting the ancient word spirits..."
 2. "Your words are being forged into reality..."
@@ -771,22 +777,16 @@ The game should be beatable in 1-5 attempts for a skilled player, even with a "b
 
 ---
 
-## 14. Levels Overview
+## 14. Future Levels & Expansion
 
-All four levels are implemented. Each applies the same three player-entered words through a completely different game genre and visual style.
+All four planned levels are implemented. The table below reflects their actual implementations:
 
-| Level | Genre | Art Style | Core Mechanic | Objective |
-|-------|-------|-----------|---------------|-----------|
-| 1 | 2D Side-scrolling Platformer | Programmatic Canvas 2D sprites | Attack, use item, jump across platforms | Defeat the creature and reach the flagpole |
-| 2 | 3D Arena Fighter | Three.js procedural geometry | 3D movement, attack, dodge | Defeat the creature in the arena |
-| 3 | Top-down Space Shooter | Neon vector wireframe (asteroids-style) | Shoot enemies, dodge bullets | Survive 90 seconds; maximize kill score |
-| 4 | Isometric Voxel Farm | Isometric voxel renderer (Canvas 2D painter's algorithm) | Hold to milk cows, carry bottles to farmhouse | Deliver as many bottles as possible in 90 seconds |
-
-### Leaderboard Ranking
-
-The combined score across all four levels determines leaderboard rank:
-- **Ranking score** = `deaths × 10000 + total_time` (lower is better — fewer deaths first, time as tiebreaker)
-- **Display columns**: deaths, time, Level 3 kill score (higher = better), Level 4 bottles delivered (higher = better), word trio
+| Level | Status | Style | Description |
+|-------|--------|-------|-------------|
+| 1 | IMPLEMENTED | 2D side-scrolling platformer | Stick figure vs creature; get to the flagpole |
+| 2 | IMPLEMENTED | 3D arena (Three.js) | Same LLM data, scaled stats; defeat creature in 3D |
+| 3 | IMPLEMENTED | Neon vector wireframe space shooter | 90-second survival; kill as many as possible |
+| 4 | IMPLEMENTED | Isometric voxel farm | Milk cows, deliver bottles, no combat |
 
 ### Future Feature Ideas
 - **Word combos:** Certain word combinations trigger easter eggs or bonus content
@@ -821,7 +821,7 @@ The combined score across all four levels determines leaderboard rank:
 - [x] Auto-deploy to Vercel on commit
 - [x] Fallback defaults if LLM fails
 
-All "Must Have" items have code implemented and deployed to Vercel. The Groq API key, Vercel KV, and auto-deploy are all confirmed working. See "Known Issues" and "Remaining Work" below for gaps in the current implementation.
+All "Must Have" items have code implemented and deployed to Vercel. The Groq API key, Vercel KV, and auto-deploy are all confirmed working.
 
 ### Nice to Have (Post-MVP)
 - [ ] More nuanced sprite composition (animations on generated entities)
@@ -831,28 +831,12 @@ All "Must Have" items have code implemented and deployed to Vercel. The Groq API
 - [ ] Share results (screenshot / link)
 - [ ] PWA support (offline play with cached content)
 - [ ] Analytics dashboard for popular words
-- [x] Additional levels — Levels 2, 3, and 4 all implemented
+- [x] Additional levels (2-5) — L2, L3, and L4 all implemented
+- [x] Asset viewer improvements — 4-panel viewer (2D/3D/Vector/Voxel) added
 
 ### Known Issues
 
-No critical issues at this time. (Previously: leaderboard initials not saving — now fixed.)
-
-### Recently Completed (from Remaining Work)
-
-- ~~**Level 4 — Isometric Voxel Farm:**~~ ✅ Full fourth level implemented with a custom isometric voxel renderer (painter's algorithm, 3-face cubes with depth sorting), 14×10 fantasy farm map, cow AI (wander/idle state machine), 2-second hold-to-milk mechanic with per-cow cooldown, bottle delivery to farmhouse, 90-second countdown timer, and ambient magic particle effects. Score = bottles delivered.
-- ~~**J key as attack alias:**~~ ✅ `J` now triggers attack/milk across all levels (ergonomic alternative to `Z`). All level intro help screens updated.
-- ~~**Leaderboard bottles column:**~~ ✅ Level 4 "bottles delivered" is stored in the leaderboard entry and displayed in a dedicated `🥛` column. Level 3 kill score is similarly stored and displayed.
-- ~~**Asset viewer voxel panel:**~~ ✅ The asset detail viewer now includes a fourth "VOXEL" canvas panel showing each asset rendered in Level 4's isometric voxel style alongside the existing 2D, 3D, and vector views.
-- ~~**Death visual feedback (Section 5.2):**~~ ✅ A "YOU DIED" overlay with red vignette and incrementing death count now displays during the 800ms death pause. (The ragdoll collapse animation itself is still not implemented — see Remaining Work below.)
-- ~~**LLM response validation (Section 8.5):**~~ ✅ `sanitizeData()` in `api/generate.js` now deep-validates all numeric fields (clamped to schema ranges), enum fields, hex colours, string lengths, and `visual.features` shape properties before caching and returning to the client.
-- ~~**Obstacle death animation:**~~ ✅ Obstacle now plays a 600ms fade-out + shrink animation on death.
-- ~~**Player hit feedback:**~~ ✅ Directional knockback and 150ms red flash on the stick figure when taking damage.
-- ~~**Weapon visual feedback:**~~ ✅ Slash arc on melee/area attacks; projectiles now render using the weapon's `visual` data.
-- ~~**Environment item pickup cue:**~~ ✅ Floating icon with pulsing glow, item name, and `[K]` hint visible on the play field. Icon is now an LLM-generated shape visual based on the environment keyword (not a generic star).
-- ~~**Item pickup mechanic:**~~ ✅ Player must walk to the item to collect it before it can be used. Pickup plays a sound effect. HUD shows three states: not collected / ready to use / used.
-- ~~**Keyword-matched environment effects:**~~ ✅ Environment item activation now plays a targeted particle animation matched to the keyword (bolt, flames, freeze, wind, explosion, beam, rain) aimed at the obstacle's position, instead of a generic full-screen flash.
-- ~~**Particle effects system (Post-MVP):**~~ ✅ Implemented for environment item effects with spawning, physics updates (gravity, spiral motion, flickering), continuous respawning for flames/rain, and per-style rendering (zigzag bolts, diamond ice crystals, streak rain, expanding rings).
-- ~~**Leaderboard initials bug:**~~ ✅ Initials now persist and display correctly on the leaderboard.
+No critical issues at this time.
 
 ### Remaining Work (within MVP features)
 
@@ -866,7 +850,112 @@ These items are part of features that are otherwise implemented but have gaps co
 
 ---
 
-## 16. References
+## 5.7 Level 2 — 3D Arena
+
+Level 2 uses the same three words and the same LLM-generated JSON as Level 1, but renders the world in 3D using Three.js.
+
+### Renderer
+- Three.js scene with a procedurally built arena (walls, floor, ceiling geometry in `arena.js`)
+- Meshes are constructed from the creature's `visual.features` data using semantic body-part mapping (head, body, limbs, etc.)
+- OrbitControls with auto-rotate enabled; player can manually orbit with Q/E keys
+
+### Stat Scaling
+Obstacle stats are scaled up relative to Level 1 to account for the 3D space and camera perspective:
+- **Health:** 1.8× the Level 1 value
+- **Attack damage:** 1.5× the Level 1 value
+- Movement and aggro range adjusted for 3D coordinate space
+
+### Camera
+- Third-person orbit camera centered on the player
+- Q/E rotate camera left/right around the player
+- Auto-rotate slowly pans when the player is idle
+- OrbitControls prevent the camera from going below the floor plane
+
+---
+
+## 5.8 Level 3 — Space Shooter
+
+Level 3 is a 90-second survival arcade shooter with a neon vector wireframe aesthetic.
+
+### Renderer
+- Canvas 2D with a dark space background and procedural starfield
+- All entities drawn with `drawVectorVisual()` — neon glow wireframe outlines instead of filled shapes
+- Environment item icons use `'#AAFF44'` as their vector color
+- Ship, enemies, and projectiles are all rendered as glowing vector outlines
+
+### Gameplay
+- **Duration:** 90 seconds; the level ends when the timer expires
+- **Lives:** 3 lives; losing all lives ends the run early
+- **Enemies:** Spawned continuously from the edges of the screen in waves; inspired by Asteroids
+- **Objective:** Survive the full 90 seconds and kill as many enemies as possible
+- **Bomb:** X key destroys all enemies currently on screen (one-use per life)
+
+### Score
+- Each enemy killed increments the score counter
+- Final score is saved to the leaderboard as the `score` field
+- Score is displayed in the HUD during play and on the victory screen
+
+---
+
+## 5.9 Level 4 — Enchanted Farm
+
+Level 4 is a peaceful isometric voxel farming level with no combat.
+
+### Renderer
+- Isometric voxel engine in `voxelRenderer.js`
+- Voxels drawn as 3-face parallelogram cubes (top face, left-side face, right-side face)
+- `drawVoxelAt(x, y, z, color)` is the core primitive
+- `drawCow()` renders the voxel cow creature using LLM `color_primary`, `color_secondary`, and `color_accent`
+
+### Map
+- **Grid:** 14×10 isometric voxel tile map
+- **Layout:** Pasture tiles, fence border, farmhouse (with golden delivery door), and stone paths
+- **Cows:** Fantasy cows (generated from Word 1) roam peacefully; no aggro, no combat
+- Cow visual colors are taken from the LLM creature `visual.color_primary`, `color_secondary`, and `color_accent` fields
+
+### Gameplay Loop
+1. Player walks through the pasture to reach a cow
+2. Hold Z near a cow to fill a milk bottle (~2 seconds to fill)
+3. Walk to the farmhouse's golden glowing door to deliver the bottle
+4. Repeat until time runs out
+
+### Scoring
+- **Duration:** 90 seconds
+- **Bottles delivered** are counted and saved to the leaderboard as the `bottles` field
+- There is no health or combat — the challenge is efficiency and navigation
+
+---
+
+## 16. Asset Viewer
+
+The Asset Viewer is accessible from the main menu via the **ASSETS** button. It lets players browse all creatures, weapons, and environments they have previously generated.
+
+### Asset Storage
+
+Generated assets are stored in the browser's `localStorage` via `assetStore.js`. Assets are keyed and deduplicated by `word + type` (e.g., `obstacle:lion`). The store persists across sessions until the browser storage is cleared. Assets are added automatically whenever a new generation is completed.
+
+### Asset List
+
+The viewer shows a scrollable list of all stored assets grouped by type (Creatures, Weapons, Environments). Selecting any entry opens the detail view.
+
+### Detail View — 4 Panels
+
+Each asset is shown in four rendering panels simultaneously:
+
+| Panel | Style | Description |
+|-------|-------|-------------|
+| **2D** | Canvas 2D primitives | Rendered with `drawVisual()` exactly as seen in Level 1 |
+| **3D** | Three.js with OrbitControls | Meshes built from `visual.features`; creature uses semantic body-part mapping; environment panel uses handcrafted effect-specific geometry (bolt shape, snowflake spikes, torus tornado, etc.) |
+| **VECTOR** | Neon wireframe | Rendered with `drawVectorVisual()`; neon glow outlines on dark background, matching Level 3 style |
+| **VOXEL** | Isometric voxel | Rendered with isometric voxel engine; creatures use `drawCow()` with LLM colors; weapons use a voxel sword shape; environments use a glowing voxel stack |
+
+### REGENERATE Button
+
+Each asset detail view includes a REGENERATE button that re-calls the LLM to produce fresh art for that word. The new result overwrites the cached version in both Vercel KV and `localStorage`.
+
+---
+
+## 17. References
 
 - **Scribblenauts** -- Primary gameplay inspiration (words create objects with real game behaviors)
 - **Block-You** -- Deployment pattern reference (https://github.com/Randroids-Dojo/Block-You)
