@@ -7,6 +7,8 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { drawVisual } from './renderer.js';
 import { drawVectorVisual } from './level3/vectorRenderer.js';
+import { drawCow } from './level4/cowObstacle.js';
+import { drawVoxel } from './level4/voxelRenderer.js';
 
 let animFrameId = null;
 let renderer = null;
@@ -23,6 +25,7 @@ const TYPE_COLORS = {
 };
 
 let canvasVec = null;
+let canvasVox = null;
 let entityType = null;
 
 /**
@@ -33,11 +36,12 @@ let entityType = null;
  * @param {HTMLCanvasElement} [cvec] - Canvas for Level 3 vector wireframe rendering
  * @param {string} [type] - Asset type ('creature', 'weapon', 'environment')
  */
-export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type) {
+export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type, cvox) {
   const visual = entityData?.visual;
   if (!visual || !visual.features) return;
 
   canvasVec = cvec || null;
+  canvasVox = cvox || null;
   entityType = type || null;
 
   // ── 2D Setup ──
@@ -211,6 +215,23 @@ export function startAssetViewer(canvas2d, canvas3d, entityData, cvec, type) {
         neonColor,
         neonColor,
       );
+    }
+
+    // ── VOXEL: draw level 4 isometric voxel style ──
+    if (canvasVox) {
+      const vctx2 = canvasVox.getContext('2d');
+      const vcw2 = canvasVox.width;
+      const vch2 = canvasVox.height;
+
+      vctx2.clearRect(0, 0, vcw2, vch2);
+      // Farm-toned background gradient
+      const bgGrad = vctx2.createLinearGradient(0, 0, 0, vch2);
+      bgGrad.addColorStop(0, '#0e1a10');
+      bgGrad.addColorStop(1, '#1a2e18');
+      vctx2.fillStyle = bgGrad;
+      vctx2.fillRect(0, 0, vcw2, vch2);
+
+      drawVoxelAssetPreview(vctx2, entityData, entityType, vcw2, vch2, t);
     }
   }
   animate();
@@ -654,7 +675,98 @@ export function stopAssetViewer() {
   camera = null;
   meshGroup = null;
   canvasVec = null;
+  canvasVox = null;
   entityType = null;
+}
+
+/**
+ * Draw a level-4 voxel isometric preview for any asset type.
+ */
+function drawVoxelAssetPreview(ctx, entityData, type, cw, ch, t) {
+  const visual = entityData?.visual;
+  const originX = cw / 2;
+  const originY = ch / 2 + 20;
+
+  if (type === 'creature') {
+    // Draw the cow voxel creature using LLM colors
+    const col1 = visual?.color_primary || '#e8d4a0';
+    const col2 = visual?.color_secondary || '#c4a070';
+    const col3 = visual?.color_accent || '#8b6040';
+
+    const mockCow = {
+      gx: 0,
+      gy: 0,
+      gz: 1,
+      facingLeft: Math.sin(t * 0.4) > 0,
+      animTime: t * 1000,
+      colorBody: col1,
+      colorSpots: col2,
+      colorAccent: col3,
+      canBeMilked: true,
+      milkProgress: 0,
+    };
+    drawCow(ctx, mockCow, originX, originY);
+
+  } else if (type === 'weapon') {
+    // Draw a voxel weapon shape: horizontal row of cubes
+    const col1 = visual?.color_primary || '#8B4513';
+    const col2 = visual?.color_secondary || '#C0C0C0';
+
+    const top1 = col1;
+    const left1 = darkenVoxelColor(col1, 0.65);
+    const right1 = darkenVoxelColor(col1, 0.5);
+    const top2 = col2;
+    const left2 = darkenVoxelColor(col2, 0.65);
+    const right2 = darkenVoxelColor(col2, 0.5);
+
+    // Shaft: 4 cubes in a row along gx axis
+    for (let i = -2; i <= 1; i++) {
+      drawVoxel(ctx, i, 0, 1, { top: top1, left: left1, right: right1 }, originX, originY);
+    }
+    // Blade/tip: 2 raised cubes at the end
+    drawVoxel(ctx, 2, 0, 1, { top: top2, left: left2, right: right2 }, originX, originY);
+    drawVoxel(ctx, 2, 0, 2, { top: top2, left: left2, right: right2 }, originX, originY);
+    // Guard
+    drawVoxel(ctx, -2, -1, 1, { top: top2, left: left2, right: right2 }, originX, originY);
+    drawVoxel(ctx, -2, 1, 1, { top: top2, left: left2, right: right2 }, originX, originY);
+
+  } else {
+    // Environment: glowing voxel stack with effect-matched colors
+    const col1 = entityData?.visual_effect?.color_primary || visual?.color_primary || '#FFD700';
+    const col2 = entityData?.visual_effect?.color_secondary || visual?.color_secondary || '#FFFFFF';
+
+    const top1 = col1;
+    const left1 = darkenVoxelColor(col1, 0.65);
+    const right1 = darkenVoxelColor(col1, 0.5);
+    const top2 = col2;
+    const left2 = darkenVoxelColor(col2, 0.65);
+    const right2 = darkenVoxelColor(col2, 0.5);
+
+    // Base platform
+    for (let gx = -1; gx <= 1; gx++) {
+      for (let gy = -1; gy <= 1; gy++) {
+        drawVoxel(ctx, gx, gy, 0, { top: left1, left: darkenVoxelColor(left1, 0.8), right: darkenVoxelColor(left1, 0.65) }, originX, originY);
+      }
+    }
+    // Central column
+    drawVoxel(ctx, 0, 0, 1, { top: top1, left: left1, right: right1 }, originX, originY);
+    // Pulsing top cube using opacity (alternate color over time)
+    const pulse = Math.abs(Math.sin(t * 2.5));
+    const topColor = pulse > 0.5 ? top1 : top2;
+    const lColor = pulse > 0.5 ? left1 : left2;
+    const rColor = pulse > 0.5 ? right1 : right2;
+    drawVoxel(ctx, 0, 0, 2, { top: topColor, left: lColor, right: rColor }, originX, originY);
+    drawVoxel(ctx, 0, 0, 3, { top: top2, left: left2, right: right2 }, originX, originY);
+  }
+}
+
+function darkenVoxelColor(hex, factor) {
+  const m = (hex || '#888888').match(/^#([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})([0-9A-Fa-f]{2})/);
+  if (!m) return hex;
+  const r = Math.floor(parseInt(m[1], 16) * factor);
+  const g = Math.floor(parseInt(m[2], 16) * factor);
+  const b = Math.floor(parseInt(m[3], 16) * factor);
+  return `rgb(${r},${g},${b})`;
 }
 
 function hexToRgba(hex, alpha) {

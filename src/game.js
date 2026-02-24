@@ -10,6 +10,7 @@ import {
   STATE_VICTORY, STATE_LEADERBOARD,
   STATE_LEVEL2_INTRO, STATE_LEVEL2_LOADING, STATE_LEVEL2_PLAYING, STATE_LEVEL2_VICTORY,
   STATE_LEVEL3_INTRO, STATE_LEVEL3_LOADING, STATE_LEVEL3_PLAYING, STATE_LEVEL3_VICTORY,
+  STATE_LEVEL4_INTRO, STATE_LEVEL4_LOADING, STATE_LEVEL4_PLAYING, STATE_LEVEL4_VICTORY,
   STATE_ASSETS, STATE_ASSET_DETAIL,
 } from './constants.js';
 import { initInput, pollInput, snapshotKeys, showTouchL1Controls, hideAllTouchControls } from './input.js';
@@ -33,10 +34,12 @@ import {
   hideUI, showVictoryScreen, showLeaderboard,
   showLevel2Intro, showLevel2Loading, showLevel2Victory,
   showLevel3Intro, showLevel3Loading, showLevel3Victory,
+  showLevel4Intro, showLevel4Loading, showLevel4Victory,
   showAssetsScreen, showAssetDetail,
 } from './ui.js';
 import { startLevel2, cleanupLevel2 } from './level2/level2.js';
 import { startLevel3, cleanupLevel3 } from './level3/level3.js';
+import { startLevel4, cleanupLevel4 } from './level4/level4.js';
 import { saveAssets, getAssetList } from './assetStore.js';
 import { startAssetViewer, stopAssetViewer } from './assetViewer.js';
 
@@ -65,6 +68,9 @@ let level1Deaths = 0;     // Deaths from Level 1 carry forward
 let level1Time = 0;       // Time from Level 1 carries forward
 let level2Deaths = 0;     // Deaths from Level 2 carry forward
 let level2Time = 0;       // Time from Level 2 carries forward
+let level3Deaths = 0;
+let level3Time = 0;
+let level3Score = 0;
 
 // ── Fallback data (used if LLM fails) ──
 const FALLBACK_DATA = {
@@ -328,6 +334,68 @@ function onLevel3Victory(totalDeaths, totalTimeMs, score) {
   cleanupLevel3();
   hideAllTouchControls();
 
+  level3Deaths = totalDeaths;
+  level3Time = totalTimeMs;
+  level3Score = score;
+
+  // Bridge to Level 4 using a custom victory screen
+  const el = document.getElementById('ui-overlay');
+  el.innerHTML = '';
+  el.style.display = 'flex';
+
+  const secs = Math.floor(totalTimeMs / 1000);
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+  el.innerHTML = `
+    <div class="level2-victory-screen level3-victory-screen">
+      <div class="level3-badge victory-badge">LEVEL 3 CLEAR</div>
+      <h2>THE VOID IS SILENT</h2>
+      <p class="victory-subtitle">The space sector is cleared. One final challenge awaits.</p>
+      <div class="final-stats">
+        <div class="stat-row"><span class="stat-label">Deaths</span><span class="stat-value">${totalDeaths}</span></div>
+        <div class="stat-row"><span class="stat-label">Time</span><span class="stat-value">${mins}:${String(s).padStart(2,'0')}</span></div>
+        <div class="stat-row"><span class="stat-label">Space Score</span><span class="stat-value">${String(score).padStart(6,'0')}</span></div>
+      </div>
+      <p class="victory-flavor">"The cosmos quiet. The farm calls. Can you handle... peace?"</p>
+      <button id="btn-continue-l4" class="btn btn-level4">CONTINUE TO LEVEL 4</button>
+      <button id="btn-l3v-back" class="btn btn-secondary">BACK TO MENU</button>
+    </div>
+  `;
+  document.getElementById('btn-continue-l4').addEventListener('click', () => {
+    import('./audio.js').then(m => m.sfxMenuSelect && m.sfxMenuSelect());
+    goToLevel4Intro();
+  });
+  document.getElementById('btn-l3v-back').addEventListener('click', () => {
+    import('./audio.js').then(m => m.sfxMenuSelect && m.sfxMenuSelect());
+    goToMenu();
+  });
+}
+
+// ── Level 4 transitions ──
+
+function goToLevel4Intro() {
+  state = STATE_LEVEL4_INTRO;
+  hideAllTouchControls();
+  showLevel4Intro(words, startLevel4Game);
+}
+
+async function startLevel4Game() {
+  state = STATE_LEVEL4_LOADING;
+  showLevel4Loading();
+
+  await new Promise(resolve => setTimeout(resolve, 1200));
+
+  state = STATE_LEVEL4_PLAYING;
+  hideUI();
+
+  startLevel4(llmData, level3Deaths, level3Time, words, onLevel4Victory);
+}
+
+function onLevel4Victory(totalDeaths, totalTimeMs, bottlesDelivered) {
+  state = STATE_LEVEL4_VICTORY;
+  cleanupLevel4();
+  hideAllTouchControls();
+
   const onSubmitScore = async (initials) => {
     try {
       await fetch('/api/leaderboard', {
@@ -340,7 +408,8 @@ function onLevel3Victory(totalDeaths, totalTimeMs, score) {
           word_1: words.creature,
           word_2: words.weapon,
           word_3: words.environment,
-          score,
+          score: level3Score,
+          bottles: bottlesDelivered,
         }),
       });
     } catch (err) {
@@ -349,7 +418,7 @@ function onLevel3Victory(totalDeaths, totalTimeMs, score) {
     goToLeaderboard();
   };
 
-  showLevel3Victory(totalDeaths, totalTimeMs, score, words, onSubmitScore, goToMenu);
+  showLevel4Victory(totalDeaths, totalTimeMs, bottlesDelivered, level3Score, words, onSubmitScore, goToMenu);
 }
 
 /**
@@ -399,11 +468,11 @@ function goToAssetDetail(assetItem) {
 
 function showDetailForItem(item) {
   stopAssetViewer();
-  const { canvas2d, canvas3d, canvasVec } = showAssetDetail(item, () => {
+  const { canvas2d, canvas3d, canvasVec, canvasVox } = showAssetDetail(item, () => {
     stopAssetViewer();
     goToAssets();
   }, () => regenerateAsset(item));
-  startAssetViewer(canvas2d, canvas3d, item.entityData, canvasVec, item.type);
+  startAssetViewer(canvas2d, canvas3d, item.entityData, canvasVec, item.type, canvasVox);
 }
 
 const TYPE_TO_KEY = { creature: 'obstacle', weapon: 'weapon', environment: 'environment_item' };

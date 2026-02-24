@@ -258,12 +258,14 @@ export function showLeaderboard(entries, onBack, onContinueToLevel2) {
       const mins = Math.floor(secs / 60);
       const s = secs % 60;
       const scoreDisplay = typeof e.score === 'number' ? String(e.score).padStart(6, '0') : '—';
+      const bottlesDisplay = typeof e.bottles === 'number' ? e.bottles : '—';
       return `<tr>
         <td>${i + 1}</td>
         <td>${escapeHtml(e.initials)}</td>
         <td>${e.deaths}</td>
         <td>${mins}:${String(s).padStart(2, '0')}</td>
         <td class="score-col">${scoreDisplay}</td>
+        <td class="bottles-col">${bottlesDisplay}</td>
         <td class="words-col">${escapeHtml(e.word_1)} / ${escapeHtml(e.word_2)} / ${escapeHtml(e.word_3)}</td>
       </tr>`;
     }).join('');
@@ -281,7 +283,7 @@ export function showLeaderboard(entries, onBack, onContinueToLevel2) {
       <div class="leaderboard-table-wrapper">
         <table class="leaderboard-table">
           <thead>
-            <tr><th>#</th><th>Name</th><th>Deaths</th><th>Time</th><th>Score</th><th>Words</th></tr>
+            <tr><th>#</th><th>Name</th><th>Deaths</th><th>Time</th><th>Score</th><th>🥛</th><th>Words</th></tr>
           </thead>
           <tbody>${rows}</tbody>
         </table>
@@ -623,6 +625,11 @@ export function showAssetDetail(assetItem, onBack, onRegenerate) {
           <canvas id="asset-canvas-vec" width="300" height="300"></canvas>
           <p class="viewer-hint">Level 3 style</p>
         </div>
+        <div class="asset-viewer-panel">
+          <p class="viewer-label">VOXEL</p>
+          <canvas id="asset-canvas-vox" width="300" height="300"></canvas>
+          <p class="viewer-hint">Level 4 style</p>
+        </div>
       </div>
     </div>
   `;
@@ -640,8 +647,132 @@ export function showAssetDetail(assetItem, onBack, onRegenerate) {
     canvas2d: document.getElementById('asset-canvas-2d'),
     canvas3d: document.getElementById('asset-canvas-3d'),
     canvasVec: document.getElementById('asset-canvas-vec'),
+    canvasVox: document.getElementById('asset-canvas-vox'),
   };
 }
+
+
+// ── Level 4 Intro Screen ──
+
+export function showLevel4Intro(words, onStart) {
+  clearOverlay();
+  showOverlay();
+  overlayEl.innerHTML = `
+    <div class="level2-intro-screen level4-intro-screen">
+      <div class="level4-badge">LEVEL 4</div>
+      <h2>THE ENCHANTED FARM</h2>
+      <p class="level2-subtitle">Peace at last. The ${escapeHtml(words?.creature || 'creature')} just wants to be milked.</p>
+      <div class="level2-info">
+        <p>A magical farm stretches before you.</p>
+        <p>Fantasy ${escapeHtml(words?.creature || 'creatures')} roam the pasture peacefully.</p>
+        <p>Collect milk and deliver it before time runs out.</p>
+      </div>
+      <div class="level2-controls-info">
+        <p class="controls-header">FARM CONTROLS</p>
+        <div class="controls-grid">
+          <span class="key">WASD / ↑↓←→</span> <span>Move (isometric)</span>
+          <span class="key">J / Z (hold)</span> <span>Milk nearby creature</span>
+          <span class="key">Walk to</span> <span>Golden door = deliver bottle</span>
+        </div>
+      </div>
+      <p class="level2-objective">Deliver as many bottles as possible in 90 seconds. No combat. Pure farm vibes.</p>
+      <button id="btn-start-level4" class="btn btn-level4">ENTER THE FARM</button>
+    </div>
+  `;
+  document.getElementById('btn-start-level4').addEventListener('click', () => {
+    sfxMenuSelect();
+    onStart();
+  });
+}
+
+// ── Level 4 Loading Screen ──
+
+export function showLevel4Loading() {
+  clearOverlay();
+  showOverlay();
+  const flavors = [
+    'Tilling magical soil...',
+    'Summoning enchanted livestock...',
+    'Growing voxel grass in the fantasy realm...',
+    'The cows are gathering for a peaceful day...',
+    'Rendering the isometric farm of dreams...',
+    'Placing hay bales with arcane precision...',
+    'The farmhouse chimney breathes magical smoke...',
+    'Enchanting the milk bottles...',
+    'A gentle breeze stirs the fantasy fields...',
+    'The voxel farm awakens under twilight skies...',
+  ];
+  const flavor = flavors[Math.floor(Math.random() * flavors.length)];
+  overlayEl.innerHTML = `
+    <div class="loading-screen level2-loading level4-loading">
+      <div class="loading-spinner level4-spinner"></div>
+      <p class="level4-loading-badge">LEVEL 4</p>
+      <p class="loading-text">${flavor}</p>
+    </div>
+  `;
+}
+
+// ── Level 4 Victory Screen ──
+
+export function showLevel4Victory(totalDeaths, totalTimeMs, bottlesDelivered, score, words, onSubmitScore, onBack) {
+  clearOverlay();
+  showOverlay();
+  const secs = Math.floor(totalTimeMs / 1000);
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+
+  overlayEl.innerHTML = `
+    <div class="level2-victory-screen level4-victory-screen">
+      <div class="level4-badge victory-badge">ALL LEVELS CLEAR!</div>
+      <h2>YOU ARE TRULY DETERMINED</h2>
+      <p class="victory-subtitle">Four levels. All dimensions. One unstoppable hero.</p>
+      <div class="final-stats">
+        <div class="stat-row">
+          <span class="stat-label">Total Deaths</span>
+          <span class="stat-value">${totalDeaths}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Total Time</span>
+          <span class="stat-value">${mins}:${String(s).padStart(2, '0')}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Space Score</span>
+          <span class="stat-value">${String(score).padStart(6, '0')}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Bottles Delivered</span>
+          <span class="stat-value">🥛 ${bottlesDelivered}</span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Words</span>
+          <span class="stat-value">${escapeHtml(words?.creature)} / ${escapeHtml(words?.weapon)} / ${escapeHtml(words?.environment)}</span>
+        </div>
+      </div>
+      <p class="victory-flavor">"The farm was always the final boss. You conquered it with patience."</p>
+      <div class="initials-entry">
+        <label>Enter your initials:
+          <input type="text" id="initials" maxlength="3" placeholder="AAA" autocomplete="off" />
+        </label>
+        <button id="btn-submit-score" class="btn btn-primary">SUBMIT SCORE</button>
+      </div>
+      <button id="btn-final-back" class="btn btn-secondary">BACK TO MENU</button>
+    </div>
+  `;
+
+  const initialsInput = document.getElementById('initials');
+  document.getElementById('btn-submit-score').addEventListener('click', () => {
+    const initials = initialsInput.value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3);
+    if (initials.length < 1) return;
+    sfxMenuSelect();
+    onSubmitScore(initials);
+  });
+  document.getElementById('btn-final-back').addEventListener('click', () => {
+    sfxMenuSelect();
+    onBack();
+  });
+  setTimeout(() => initialsInput.focus(), 100);
+}
+
 
 function escapeHtml(str) {
   const div = document.createElement('div');
