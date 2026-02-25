@@ -356,10 +356,10 @@ function getNearestMilkableCow() {
  * Draw a pulsing beacon above the farmhouse delivery zone so it is always visible.
  */
 function drawDeliveryBeacon(ctx) {
-  // Delivery tiles are at (2,2) and (3,2). Center between them, high above roof.
-  const beaconGX = 2.5;
-  const beaconGY = 2.0;
-  const pos = gridToScreen(beaconGX, beaconGY, 7, ORIGIN_X, ORIGIN_Y);
+  // Delivery tile is at (4,2) — on the stone path in front of the farmhouse.
+  const beaconGX = 4.5;
+  const beaconGY = 2.5;
+  const pos = gridToScreen(beaconGX, beaconGY, 4, ORIGIN_X, ORIGIN_Y);
   const cx = pos.x;
   const bounce = Math.sin(Date.now() * 0.004) * 5;
   const cy = pos.y + bounce;

@@ -38,11 +38,11 @@ const COLORS = {
 // Row 0 & 9, Col 0 & 13 = fence border
 // House (3x3) at rows 1-3, cols 1-3
 // Stone path at col 4, rows 1-8
-// Delivery at (2,2) — row 2 col 2 (inside house, door side)
+// Delivery at (4,2) — on the path right at the farmhouse door (easily accessible)
 export const MAP = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,3,3,3,2,0,0,0,0,0,7,0,0,1],
-  [1,3,6,6,2,0,0,4,0,0,0,0,0,1],
+  [1,3,3,3,6,0,0,4,0,0,0,0,0,1],
   [1,3,3,3,2,0,0,0,0,0,0,7,0,1],
   [1,0,0,0,2,0,0,0,5,0,0,0,0,1],
   [1,0,0,0,2,0,4,0,0,0,7,0,0,1],
@@ -55,8 +55,8 @@ export const MAP = [
 // Cow roaming zone: rows 1-8, cols 5-12 (open pasture)
 export const COW_ZONE = { minX: 5, maxX: 12, minY: 1, maxY: 8 };
 
-// Delivery zone tile coords
-export const DELIVERY_GX = 2;
+// Delivery zone tile coords — on the stone path directly in front of the farmhouse door
+export const DELIVERY_GX = 4;
 export const DELIVERY_GY = 2;
 
 // Check if a grid cell is walkable for the player
@@ -152,6 +152,11 @@ function addFarmhouseVoxels(drawList) {
         // Skip interior — only draw perimeter walls
         const isEdge = (gx === 1 || gx === 3 || gy === 1 || gy === 3);
         if (!isEdge) continue;
+
+        // Skip wall on delivery tiles (doorway opening) and on the east-center
+        // face (gx=3, gy=2) so the farmhouse has a visible door toward the path
+        if (MAP[gy][gx] === 6) continue;
+        if (gx === 3 && gy === 2) continue;
 
         drawList.push({
           gx, gy, gz,

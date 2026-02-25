@@ -331,20 +331,11 @@ function render() {
     drawEnemy(ctx, enemy, enemyVisual, elapsedSec);
   }
 
-  // 4. Draw player bullets — use the weapon visual if available, else laser bolt
-  const BULLET_SCALE = 0.3;
+  // 4. Draw player bullets — glowing laser bolt using weapon color
   for (const b of playerBullets) {
     const angle = Math.atan2(b.vx, -b.vy);
-    if (weaponVisual) {
-      const glowColor = weaponVisual.color_primary || '#00FFFF';
-      ctx.save();
-      ctx.translate(b.x, b.y);
-      ctx.rotate(angle);
-      drawVectorVisual(ctx, weaponVisual, 0, 0, BULLET_SCALE, glowColor, glowColor);
-      ctx.restore();
-    } else {
-      drawBullet(ctx, b.x, b.y, angle, b.color);
-    }
+    const bulletColor = weaponVisual?.color_primary || b.color || '#00FFFF';
+    drawBullet(ctx, b.x, b.y, angle, bulletColor);
   }
 
   // 5. Draw player ship — trail streak, engine glow, then hull
