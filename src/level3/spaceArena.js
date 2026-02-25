@@ -21,6 +21,7 @@ const LAYER_CONFIGS = [
 
 let layers = [];    // Array of arrays of star objects
 let elapsed = 0;
+let gridRipples = [];  // Active shockwave ripples from explosions
 
 // Environment theming — set by initArena from environment_item visual_effect colors
 let gridColor = '0, 255, 255';   // default cyan (R, G, B as string for rgba())
@@ -62,6 +63,15 @@ function hexToRgbStr(hex) {
   const b = parseInt(h.substring(4, 6), 16);
   if (isNaN(r) || isNaN(g) || isNaN(b)) return null;
   return `${r}, ${g}, ${b}`;
+}
+
+/**
+ * Add a shockwave ripple to the perspective grid, centered at (x, y).
+ * @param {number} x
+ * @param {number} y
+ */
+export function addGridRipple(x, y) {
+  gridRipples.push({ x, y, time: 0, maxTime: 700 });
 }
 
 /**
@@ -121,6 +131,11 @@ export function updateArena(dt) {
       }
     }
   }
+
+  // Age ripples and prune expired ones
+  const dtMs = dt * 1000;
+  for (const r of gridRipples) r.time += dtMs;
+  gridRipples = gridRipples.filter(r => r.time < r.maxTime);
 }
 
 /**
@@ -166,46 +181,79 @@ function drawNebula(ctx, cx, cy, radius, color) {
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 }
 
+/**
+ * Compute cumulative ripple displacement for a point (px, py).
+ * @returns {{dx: number, dy: number}}
+ */
+function rippleDisplace(px, py) {
+  let totalDx = 0;
+  let totalDy = 0;
+  for (const r of gridRipples) {
+    const progress  = r.time / r.maxTime;
+    const waveRadius = progress * 650;
+    const ddx = px - r.x;
+    const ddy = py - r.y;
+    const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+    if (dist < 1) continue;
+    const thickness = 55 * (1 - progress * 0.4);
+    const waveDist  = Math.abs(dist - waveRadius);
+    if (waveDist > thickness) continue;
+    const strength    = (1 - progress) * 18;
+    const phase       = (1 - waveDist / thickness) * Math.PI;
+    const displacement = Math.sin(phase) * strength;
+    totalDx += (ddx / dist) * displacement;
+    totalDy += (ddy / dist) * displacement;
+  }
+  return { dx: totalDx, dy: totalDy };
+}
+
+/**
+ * Draw a line from (x1,y1) to (x2,y2) with ripple distortion applied,
+ * subdivided into `segs` segments.
+ */
+function drawDistortedLine(ctx, x1, y1, x2, y2, segs) {
+  ctx.beginPath();
+  for (let s = 0; s <= segs; s++) {
+    const t  = s / segs;
+    const px = x1 + (x2 - x1) * t;
+    const py = y1 + (y2 - y1) * t;
+    const { dx, dy } = rippleDisplace(px, py);
+    if (s === 0) ctx.moveTo(px + dx, py + dy);
+    else         ctx.lineTo(px + dx, py + dy);
+  }
+  ctx.stroke();
+}
+
 function drawPerspectiveGrid(ctx, cw, ch) {
   ctx.save();
   ctx.lineWidth = 0.8;
 
-  // ── Vertical fan lines radiating from vanish point ──
   const vx = GRID_VANISH_X;
   const vy = GRID_VANISH_Y;
+  const leftX  = -cw * 0.1;
+  const rightX =  cw * 1.1;
 
-  // Fan lines spread from left edge to right edge at bottom
-  const leftX = -cw * 0.1;
-  const rightX = cw * 1.1;
+  // Subdivide lines more when ripples are active for smoother distortion
+  const segs = gridRipples.length > 0 ? 12 : 2;
 
-  ctx.strokeStyle = `rgba(${gridColor}, 0.18)`;
-  ctx.beginPath();
+  // ── Vertical fan lines ──
+  ctx.strokeStyle = `rgba(${gridColor}, 0.22)`;
   for (let i = 0; i <= GRID_V_LINES; i++) {
-    const t = i / GRID_V_LINES;
+    const t  = i / GRID_V_LINES;
     const bx = leftX + t * (rightX - leftX);
-    ctx.moveTo(vx, vy);
-    ctx.lineTo(bx, GRID_BOTTOM_Y);
+    drawDistortedLine(ctx, vx, vy, bx, GRID_BOTTOM_Y, segs);
   }
-  ctx.stroke();
 
   // ── Horizontal receding lines ──
-  // Use perspective foreshortening: lines bunch up near the vanish point
-  ctx.strokeStyle = `rgba(${gridColor}, 0.12)`;
-  ctx.beginPath();
+  ctx.strokeStyle = `rgba(${gridColor}, 0.15)`;
   for (let i = 1; i <= GRID_H_LINES; i++) {
-    // Quadratic distribution: lines crowd near vanish point
-    const t = (i / GRID_H_LINES) ** 1.8;
+    const t     = (i / GRID_H_LINES) ** 1.8;
     const lineY = vy + t * (GRID_BOTTOM_Y - vy);
-
-    // How wide is the grid at this Y? Interpolate from 0 (at vanish) to full width (at bottom)
     const horizT = (lineY - vy) / (GRID_BOTTOM_Y - vy);
-    const lx = vx + (leftX - vx) * horizT;
+    const lx = vx + (leftX  - vx) * horizT;
     const rx = vx + (rightX - vx) * horizT;
-
-    ctx.moveTo(lx, lineY);
-    ctx.lineTo(rx, lineY);
+    drawDistortedLine(ctx, lx, lineY, rx, lineY, segs);
   }
-  ctx.stroke();
 
   ctx.restore();
 }

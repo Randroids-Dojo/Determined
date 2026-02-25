@@ -4,9 +4,9 @@
  */
 
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
-import { initArena, updateArena, drawArena } from './spaceArena.js';
+import { initArena, updateArena, drawArena, addGridRipple } from './spaceArena.js';
 import {
-  drawPlayerShip, drawBullet, drawExplosion,
+  drawPlayerShip, drawBullet, drawEngineGlow, drawExplosion,
   createExplosion, updateExplosion, drawVectorVisual,
 } from './vectorRenderer.js';
 import {
@@ -38,6 +38,7 @@ let enemies = [];
 let playerBullets = [];
 let enemyBullets = [];
 let explosions = [];   // Array of particle arrays
+let shipTrail = [];    // Recent ship positions for engine trail
 
 let score = 0;
 let timeRemaining = GAME_DURATION;
@@ -95,6 +96,7 @@ export function startLevel3(data, _prevDeaths, _prevTimeMs, _words, onVictory) {
   playerBullets = [];
   enemyBullets = [];
   explosions = [];
+  shipTrail = [];
 
   score = 0;
   timeRemaining = GAME_DURATION;
@@ -153,6 +155,15 @@ function update(dt, dtMs) {
   // 2. Update player ship
   updatePlayerShip(ship, actions, dt, CANVAS_WIDTH, CANVAS_HEIGHT, enemies);
 
+  // Record ship trail for engine streak effect
+  if (!ship.dead) {
+    const spd = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
+    if (spd > 0.3) {
+      shipTrail.unshift({ x: ship.x, y: ship.y });
+      if (shipTrail.length > 18) shipTrail.pop();
+    }
+  }
+
   // 3. Fire on attack button press (respects cooldown — no auto-fire)
   if (actions.attack) {
     const bullet = shootIfReady(ship, enemies);
@@ -204,7 +215,8 @@ function update(dt, dtMs) {
   const { killed, hitBullets } = checkBulletHits(playerBullets, enemies);
   for (const enemy of killed) {
     score += killEnemy(enemy);
-    explosions.push(createExplosion(enemy.x, enemy.y, '#00FFCC', 18));
+    explosions.push(createExplosion(enemy.x, enemy.y, '#00FFCC', 24));
+    addGridRipple(enemy.x, enemy.y);
   }
   // Remove hit bullets
   const hitBulletSet = new Set(hitBullets);
@@ -235,7 +247,8 @@ function update(dt, dtMs) {
       // Kill first contacting enemy and damage player
       const firstEnemy = contactEnemies[0];
       score += killEnemy(firstEnemy);
-      explosions.push(createExplosion(firstEnemy.x, firstEnemy.y, '#FF8800', 14));
+      explosions.push(createExplosion(firstEnemy.x, firstEnemy.y, '#FF8800', 20));
+      addGridRipple(firstEnemy.x, firstEnemy.y);
 
       const died = hitPlayerShip(ship);
       spawnHitFlash(ship.x, ship.y);
@@ -291,16 +304,24 @@ function render() {
 
   const livingEnemies = enemies.filter(e => !e.dead);
 
-  // 2. Draw enemy bullets
+  // 2. Draw enemy bullets — glowing orbs with hot core
   for (const b of enemyBullets) {
     const alpha = Math.min(1, b.life / 300);
     ctx.save();
     ctx.globalAlpha = alpha;
-    ctx.shadowBlur = 8;
-    ctx.shadowColor = b.color;
-    ctx.fillStyle = b.color;
+    // Outer glow
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = '#FF2200';
+    ctx.fillStyle = '#FF3322';
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 3, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Bright core
+    ctx.shadowBlur = 5;
+    ctx.shadowColor = '#FFBBAA';
+    ctx.fillStyle = '#FFDDCC';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -326,11 +347,33 @@ function render() {
     }
   }
 
-  // 5. Draw player ship (blink when invincible)
+  // 5. Draw player ship — trail streak, engine glow, then hull
   if (!ship.dead) {
     const blink = ship.invincible && Math.floor(elapsedSec * 10) % 2 === 0;
+
+    // Engine trail streak
+    if (!blink && shipTrail.length > 1) {
+      ctx.save();
+      for (let i = 1; i < shipTrail.length; i++) {
+        const frac = 1 - i / shipTrail.length;
+        ctx.globalAlpha = frac * 0.45;
+        ctx.shadowBlur  = 10 * frac;
+        ctx.shadowColor = '#44BBFF';
+        ctx.fillStyle   = '#44BBFF';
+        ctx.beginPath();
+        ctx.arc(shipTrail[i].x, shipTrail[i].y, 2.5 * frac, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
     if (!blink) {
-      drawPlayerShip(ctx, ship.x, ship.y, ship.angle, '#00AAFF');
+      // Engine glow (intensity proportional to ship speed)
+      const spd = Math.sqrt(ship.vx * ship.vx + ship.vy * ship.vy);
+      const intensity = Math.min(1, spd / 6);
+      drawEngineGlow(ctx, ship.x, ship.y, ship.angle, intensity);
+
+      drawPlayerShip(ctx, ship.x, ship.y, ship.angle, '#EEFFFF');
     }
   }
 
@@ -419,6 +462,7 @@ function handlePlayerDeath() {
   lives = ship.lives;
   gameOver = true;
   gameOverTimer = 0;
+  shipTrail = [];
   explosions.push(createExplosion(ship.x, ship.y, '#4488FF', 30));
 }
 
@@ -498,6 +542,7 @@ export function cleanupLevel3() {
   playerBullets = [];
   enemyBullets = [];
   explosions = [];
+  shipTrail = [];
   enemyVisual = null;
   weaponVisual = null;
   envItemData = null;

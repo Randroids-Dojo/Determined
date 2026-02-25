@@ -5,12 +5,12 @@
 
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
 
-const SHIP_SPEED = 0.15;       // acceleration per ms
-const SHIP_MAX_SPEED = 4;      // px/frame equivalent
-const SHIP_FRICTION = 0.92;    // velocity damping per update
-const SHOOT_INTERVAL = 250;    // ms between shots (manual fire)
+const SHIP_SPEED = 0.25;       // acceleration per ms
+const SHIP_MAX_SPEED = 7;      // px/frame equivalent
+const SHIP_FRICTION = 0.90;    // velocity damping per update
+const SHOOT_INTERVAL = 140;    // ms between shots (manual fire)
 const INVINCIBLE_DURATION = 2000; // ms of invincibility after hit
-const BULLET_SPEED = 6;        // px per frame (at 60fps)
+const BULLET_SPEED = 10;       // px per frame (at 60fps)
 
 /**
  * Create a new player ship at screen center.
@@ -163,7 +163,7 @@ export function shootIfReady(ship, enemies) {
     angle: Math.atan2(nx, -ny),
     life: 1200,
     maxLife: 1200,
-    color: '#00FFFF',
+    color: '#FFE000',
   };
 }
 

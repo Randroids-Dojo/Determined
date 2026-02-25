@@ -253,20 +253,80 @@ export function drawPlayerShip(ctx, x, y, angle, color) {
  * @param {string} color
  */
 export function drawBullet(ctx, x, y, angle, color) {
-  const len = 8;
+  const len = 16;
   const dx = Math.sin(angle) * len;
   const dy = -Math.cos(angle) * len;
 
   ctx.save();
+  ctx.lineCap = 'round';
 
-  withGlow(ctx, color, color, 8, () => {
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x - dx / 2, y - dy / 2);
-    ctx.lineTo(x + dx / 2, y + dy / 2);
-    ctx.stroke();
-  });
+  // Outer wide glow halo
+  ctx.shadowBlur = 24;
+  ctx.shadowColor = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.globalAlpha = 0.3;
+  ctx.beginPath();
+  ctx.moveTo(x - dx / 2, y - dy / 2);
+  ctx.lineTo(x + dx / 2, y + dy / 2);
+  ctx.stroke();
 
+  // Mid colored core
+  ctx.shadowBlur = 14;
+  ctx.shadowColor = color;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 1.0;
+  ctx.beginPath();
+  ctx.moveTo(x - dx / 2, y - dy / 2);
+  ctx.lineTo(x + dx / 2, y + dy / 2);
+  ctx.stroke();
+
+  // White-hot inner spine
+  const shortLen = len * 0.55;
+  const sdx = Math.sin(angle) * shortLen;
+  const sdy = -Math.cos(angle) * shortLen;
+  ctx.shadowBlur = 6;
+  ctx.shadowColor = '#FFFFFF';
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.95;
+  ctx.beginPath();
+  ctx.moveTo(x - sdx / 2, y - sdy / 2);
+  ctx.lineTo(x + sdx / 2, y + sdy / 2);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+/**
+ * Draw a pulsing engine glow behind the ship.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} x — ship center x
+ * @param {number} y — ship center y
+ * @param {number} angle — ship facing angle in radians (0 = up)
+ * @param {number} intensity — 0..1 normalized speed
+ */
+export function drawEngineGlow(ctx, x, y, angle, intensity) {
+  if (intensity < 0.05) return;
+
+  // Engine exhaust offset: opposite of nose direction
+  const backAngle = angle + Math.PI;
+  const ex = x + Math.sin(backAngle) * 9;
+  const ey = y - Math.cos(backAngle) * 9;
+
+  const glowR = 6 + intensity * 22;
+
+  const grad = ctx.createRadialGradient(ex, ey, 0, ex, ey, glowR);
+  grad.addColorStop(0,   `rgba(160, 220, 255, ${0.9 * intensity})`);
+  grad.addColorStop(0.3, `rgba(40,  120, 255, ${0.6 * intensity})`);
+  grad.addColorStop(1,   'rgba(0, 0, 80, 0)');
+
+  ctx.save();
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(ex, ey, glowR, 0, Math.PI * 2);
+  ctx.fill();
   ctx.restore();
 }
 
