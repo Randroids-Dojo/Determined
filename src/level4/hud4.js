@@ -3,7 +3,7 @@
  * Displays: time remaining, bottles delivered, milk prompt, urgency.
  */
 
-export function drawHUD4(ctx, canvasW, canvasH, timeRemaining, bottlesDelivered, milkPromptCow, playerCarrying) {
+export function drawHUD4(ctx, canvasW, canvasH, timeRemaining, bottlesDelivered, milkPromptCow, playerCarrying, itemAvailable) {
   const hudY = 8;
   const hudH = 36;
   const pad = 12;
@@ -41,7 +41,7 @@ export function drawHUD4(ctx, canvasW, canvasH, timeRemaining, bottlesDelivered,
   ctx.fillText(`🥛 × ${bottlesDelivered}`, canvasW / 2, hudY + hudH / 2);
   ctx.shadowBlur = 0;
 
-  // Carrying indicator (right side)
+  // Right side: carrying message takes priority, else show item status
   if (playerCarrying) {
     ctx.fillStyle = '#80e0ff';
     ctx.font = 'bold 13px monospace';
@@ -49,6 +49,16 @@ export function drawHUD4(ctx, canvasW, canvasH, timeRemaining, bottlesDelivered,
     ctx.shadowBlur = 6;
     ctx.shadowColor = '#80e0ff';
     ctx.fillText('🧴 DELIVER TO FARMHOUSE!', canvasW - pad - 12, hudY + hudH / 2);
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillStyle = itemAvailable ? '#80e0ff' : '#445566';
+    ctx.font = 'bold 12px monospace';
+    ctx.textAlign = 'right';
+    if (itemAvailable) {
+      ctx.shadowBlur = 5;
+      ctx.shadowColor = '#80e0ff';
+    }
+    ctx.fillText(itemAvailable ? '[X] ❄ Freeze Cows' : '❄ Used', canvasW - pad - 12, hudY + hudH / 2);
     ctx.shadowBlur = 0;
   }
 

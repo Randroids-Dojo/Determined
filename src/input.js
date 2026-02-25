@@ -48,6 +48,8 @@ function updateActionsFromKeys() {
     actions.jump = !!(keys['Space']);
   } else if (level3Active) {
     actions.jump = false;
+  } else if (level4Active) {
+    actions.jump = !!(keys['Space']);
   } else {
     actions.jump = !!(keys['ArrowUp'] || keys['KeyW'] || keys['Space']);
   }
@@ -361,6 +363,7 @@ function updateActionsFromTouch3D() {
 
 let level2Active = false;
 let level3Active = false;
+let level4Active = false;
 
 /**
  * Show Level 2 touch controls (dual-stick + action buttons).
@@ -383,6 +386,7 @@ export function showTouch3DControls() {
 export function showTouchL1Controls() {
   level2Active = false;
   level3Active = false;
+  level4Active = false;
   if (!('ontouchstart' in window)) return;
 
   const l1 = document.getElementById('touch-controls');
@@ -407,6 +411,31 @@ export function showTouchL1Controls() {
 export function showTouchL3Controls() {
   level2Active = false;
   level3Active = true;
+  level4Active = false;
+  if (!('ontouchstart' in window)) return;
+
+  const l1 = document.getElementById('touch-controls');
+  const l2 = document.getElementById('touch-controls-3d');
+  if (l1) l1.style.display = 'flex';
+  if (l2) l2.style.display = 'none';
+
+  joystickActive = false;
+  joystickX = 0;
+  joystickY = 0;
+  joystickTouchId = null;
+  cameraTouchId = null;
+  cameraDeltaX = 0;
+  cameraDeltaY = 0;
+  touch3dBtns = {};
+}
+
+/**
+ * Show Level 4 touch controls (same L1 buttons; Space = jump, not attack).
+ */
+export function showTouchL4Controls() {
+  level2Active = false;
+  level3Active = false;
+  level4Active = true;
   if (!('ontouchstart' in window)) return;
 
   const l1 = document.getElementById('touch-controls');

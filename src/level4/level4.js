@@ -21,14 +21,14 @@
  */
 
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../constants.js';
-import { pollInput, showTouchL3Controls } from '../input.js';
+import { pollInput, showTouchL4Controls } from '../input.js';
 import {
   DELIVERY_GX, DELIVERY_GY,
   buildTerrainDrawList, renderTerrainDrawList,
   updateFarm, drawMagicParticles, updateMagicParticles,
   createMagicParticles,
 } from './farmEnvironment.js';
-import { sortDrawList } from './voxelRenderer.js';
+import { sortDrawList, gridToScreen } from './voxelRenderer.js';
 import {
   createCow, updateCow, milkCow, cowPlayerDistance, drawCow,
 } from './cowObstacle.js';
@@ -66,6 +66,14 @@ let onVictoryCallback = null;
 let prevDeaths = 0;
 let prevTimeMs = 0;
 
+// Magic item (X key) — freeze all cows briefly
+let envItemData = null;
+let itemAvailable = true;
+let itemActive = false;
+let itemTimer = 0;
+const ITEM_DURATION = 2000;      // ms for the flash animation
+const COW_FREEZE_DURATION = 5.0; // seconds cows are frozen
+
 /**
  * Initialize and start Level 4.
  */
@@ -78,6 +86,7 @@ export function startLevel4(data, _prevDeaths, _prevTimeMs, words, onVictory) {
   onVictoryCallback = onVictory;
   prevDeaths = _prevDeaths || 0;
   prevTimeMs = _prevTimeMs || 0;
+  envItemData = data?.environment_item || null;
 
   // Show canvas (was hidden during Level 2)
   canvas.style.display = '';
@@ -104,12 +113,15 @@ export function startLevel4(data, _prevDeaths, _prevTimeMs, words, onVictory) {
   timeRemaining = GAME_DURATION;
   deliveryFlash = 0;
   milkingCowId = null;
+  itemAvailable = true;
+  itemActive = false;
+  itemTimer = 0;
   lastTimestamp = 0;
   startTime = Date.now();
   running = true;
 
-  // Use existing Level 1/3 touch layout (WASD-equivalent d-pad)
-  showTouchL3Controls();
+  // Level 4 touch layout — d-pad + jump (Space) + milk (Z) + item (X)
+  showTouchL4Controls();
 
   animFrameId = requestAnimationFrame(gameLoop);
 }
@@ -216,10 +228,31 @@ function update(dt) {
   // Delivery flash decay
   if (deliveryFlash > 0) deliveryFlash -= dtSec * 1.5;
 
+  // Magic item (X key) — freeze all cows
+  if (actions.item && itemAvailable && !itemActive) {
+    triggerMagicItem();
+  }
+  if (itemActive) {
+    itemTimer += dt;
+    if (itemTimer >= ITEM_DURATION) {
+      itemActive = false;
+    }
+  }
+
   // Win condition — time runs out
   if (timeRemaining <= 0) {
     timeRemaining = 0;
     endLevel4();
+  }
+}
+
+function triggerMagicItem() {
+  itemAvailable = false;
+  itemActive = true;
+  itemTimer = 0;
+  // Freeze all cows in place
+  for (const cow of cows) {
+    cow.frozenTimer = COW_FREEZE_DURATION;
   }
 }
 
@@ -282,6 +315,12 @@ function render() {
     }
   }
 
+  // Delivery beacon (always visible above farmhouse)
+  drawDeliveryBeacon(ctx);
+
+  // Item flash effect
+  drawItemFlash(ctx);
+
   // Delivery flash
   drawDeliveryFlash(ctx, CANVAS_WIDTH, CANVAS_HEIGHT, deliveryFlash);
 
@@ -295,6 +334,7 @@ function render() {
     bottlesDelivered,
     nearestCowForPrompt && !player.carryingBottle ? nearestCowForPrompt : null,
     player.carryingBottle,
+    itemAvailable,
   );
 }
 
@@ -310,6 +350,77 @@ function getNearestMilkableCow() {
     }
   }
   return best;
+}
+
+/**
+ * Draw a pulsing beacon above the farmhouse delivery zone so it is always visible.
+ */
+function drawDeliveryBeacon(ctx) {
+  // Delivery tiles are at (2,2) and (3,2). Center between them, high above roof.
+  const beaconGX = 2.5;
+  const beaconGY = 2.0;
+  const pos = gridToScreen(beaconGX, beaconGY, 7, ORIGIN_X, ORIGIN_Y);
+  const cx = pos.x;
+  const bounce = Math.sin(Date.now() * 0.004) * 5;
+  const cy = pos.y + bounce;
+
+  const alpha = player.carryingBottle ? 1.0 : 0.65;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.shadowBlur = 18;
+  ctx.shadowColor = '#ffe080';
+
+  // Downward arrow
+  ctx.fillStyle = '#ffe080';
+  ctx.beginPath();
+  ctx.moveTo(cx, cy + 10);
+  ctx.lineTo(cx - 9, cy - 4);
+  ctx.lineTo(cx + 9, cy - 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Label
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#fff8c0';
+  ctx.font = `bold ${player.carryingBottle ? 13 : 11}px monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText('DELIVER', cx, cy - 6);
+
+  ctx.restore();
+}
+
+/**
+ * Draw the magic item activation flash (expanding ring).
+ */
+function drawItemFlash(ctx) {
+  if (!itemActive) return;
+  const progress = itemTimer / ITEM_DURATION;
+  const c1 = envItemData?.visual_effect?.color_primary || '#80e0ff';
+  const c2 = envItemData?.visual_effect?.color_secondary || c1;
+
+  if (progress < 0.25) {
+    const flashAlpha = (1 - progress / 0.25) * 0.45;
+    ctx.save();
+    ctx.fillStyle = c1;
+    ctx.globalAlpha = flashAlpha;
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+    ctx.restore();
+  } else {
+    const fade = (progress - 0.25) / 0.75;
+    const ringRadius = fade * Math.max(CANVAS_WIDTH, CANVAS_HEIGHT) * 0.9;
+    ctx.save();
+    ctx.globalAlpha = (1 - fade) * 0.55;
+    ctx.strokeStyle = c2;
+    ctx.lineWidth = 5 * (1 - fade) + 1;
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = c1;
+    ctx.beginPath();
+    ctx.arc(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 }
 
 /**

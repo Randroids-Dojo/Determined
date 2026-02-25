@@ -53,6 +53,9 @@ export function createCow(data, gx, gy, id) {
 
     // Visual metadata
     name: data?.name || 'Magical Cow',
+
+    // Magic freeze effect
+    frozenTimer: 0,
   };
 }
 
@@ -64,6 +67,21 @@ export function createCow(data, gx, gy, id) {
 export function updateCow(cow, dt) {
   const dtSec = dt / 1000;
   cow.animTime += dt;
+
+  // Magic freeze — skip movement while frozen
+  if (cow.frozenTimer > 0) {
+    cow.frozenTimer -= dtSec;
+    if (cow.frozenTimer < 0) cow.frozenTimer = 0;
+    // Still tick milk cooldown while frozen
+    if (cow.milkCooldown > 0) {
+      cow.milkCooldown -= dtSec;
+      if (cow.milkCooldown <= 0) {
+        cow.milkCooldown = 0;
+        cow.canBeMilked = true;
+      }
+    }
+    return;
+  }
 
   // Milk cooldown
   if (cow.milkCooldown > 0) {
@@ -261,6 +279,29 @@ export function drawCow(ctx, cow, originX, originY) {
     ctx.font = 'bold 8px monospace';
     ctx.textAlign = 'center';
     ctx.fillText('MILKING...', cx, barY - 4);
+  }
+
+  // Frozen indicator — ice crystal effect
+  if (cow.frozenTimer > 0) {
+    ctx.save();
+    ctx.strokeStyle = '#80e0ff';
+    ctx.lineWidth = 1.5;
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#80e0ff';
+    for (let i = 0; i < 6; i++) {
+      const angle = (i / 6) * Math.PI * 2;
+      const r = 22;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(angle) * r, cy + Math.sin(angle) * r);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = '#80e0ff';
+    ctx.font = 'bold 9px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`❄ ${Math.ceil(cow.frozenTimer)}s`, cx, headCY - 20);
+    ctx.restore();
   }
 
   // Cooldown indicator — small X showing cow is milked out

@@ -14,6 +14,9 @@ import { gridToScreen, HALF_W, HALF_H, CUBE_H } from './voxelRenderer.js';
 
 const PLAYER_SPEED = 4.5;  // grid units per second
 const CARRY_BOB_SPEED = 0.008;
+const JUMP_FORCE = 7.5;    // grid-z units per second
+const JUMP_GRAVITY = 22;   // downward acceleration (grid-z / sec²)
+const GROUND_GZ = 1;       // resting height
 
 export function createPlayer4(startGX, startGY) {
   return {
@@ -25,6 +28,10 @@ export function createPlayer4(startGX, startGY) {
     carryingBottle: false,
     animTime: 0,
     bobOffset: 0,
+
+    // Jump
+    isJumping: false,
+    jumpVz: 0,
 
     // For delivery flash
     deliverFlash: 0,
@@ -69,6 +76,21 @@ export function updatePlayer4(player, actions, dt) {
     player.state = player.carryingBottle ? 'carrying' : 'walking';
   } else {
     player.state = player.carryingBottle ? 'carrying' : 'idle';
+  }
+
+  // Jump — Space bar
+  if (actions.jump && !player.isJumping) {
+    player.jumpVz = JUMP_FORCE;
+    player.isJumping = true;
+  }
+  if (player.isJumping) {
+    player.jumpVz -= JUMP_GRAVITY * dtSec;
+    player.gz += player.jumpVz * dtSec;
+    if (player.gz <= GROUND_GZ) {
+      player.gz = GROUND_GZ;
+      player.jumpVz = 0;
+      player.isJumping = false;
+    }
   }
 
   // Carry animation
