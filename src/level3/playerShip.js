@@ -127,7 +127,9 @@ export function updatePlayerShip(ship, actions, dt, cw, ch, enemies) {
 }
 
 /**
- * Return a bullet aimed at nearest living enemy if cooldown allows, else null.
+ * Return a bullet if cooldown allows, else null.
+ * Aims at the nearest living enemy; falls back to the ship's current facing
+ * direction when no enemies are alive.
  *
  * @param {Object} ship
  * @param {Array} enemies
@@ -137,23 +139,28 @@ export function shootIfReady(ship, enemies) {
   if (ship.dead) return null;
   if (ship.shootCooldown > 0) return null;
 
-  const nearest = findNearestEnemy(ship.x, ship.y, enemies);
-  if (!nearest) return null;
-
   ship.shootCooldown = ship.shootInterval;
 
-  const dx = nearest.x - ship.x;
-  const dy = nearest.y - ship.y;
-  const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-  const nx = dx / dist;
-  const ny = dy / dist;
+  const nearest = findNearestEnemy(ship.x, ship.y, enemies);
+  let nx, ny;
+  if (nearest) {
+    const dx = nearest.x - ship.x;
+    const dy = nearest.y - ship.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    nx = dx / dist;
+    ny = dy / dist;
+  } else {
+    // No living enemies — fire in current facing direction
+    nx = Math.sin(ship.angle);
+    ny = -Math.cos(ship.angle);
+  }
 
   return {
     x: ship.x + nx * 14,
     y: ship.y + ny * 14,
     vx: nx * BULLET_SPEED,
     vy: ny * BULLET_SPEED,
-    angle: Math.atan2(dx, -dy),
+    angle: Math.atan2(nx, -ny),
     life: 1200,
     maxLife: 1200,
     color: '#00FFFF',

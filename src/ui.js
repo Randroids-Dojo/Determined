@@ -443,8 +443,8 @@ export function showLevel3Intro(words, onStart) {
         <p class="controls-header">SPACE CONTROLS</p>
         <div class="controls-grid">
           <span class="key">WASD / ↑↓←→</span> <span>Move ship</span>
-          <span class="key">J / Z</span> <span>Shoot burst</span>
-          <span class="key">Auto</span> <span>Ship fires at nearest enemy</span>
+          <span class="key">J / Z / Space</span> <span>Shoot (aims at nearest enemy)</span>
+          <span class="key">X</span> <span>Bomb — destroys all enemies (one use)</span>
         </div>
       </div>
       <p class="level2-objective">Survive 90 seconds. Kill as many as you can. 3 lives.</p>

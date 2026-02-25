@@ -170,7 +170,7 @@ A stick figure. Simple, charming, intentionally lo-fi.
 | Action | Keyboard | Touch | Description |
 |--------|----------|-------|-------------|
 | Move (all dirs) | `WASD` or Arrows | `◀` `▶` `▲` `▼` | 8-directional thrust |
-| Fire | `Z` / `J` or `Space` | `⚔` | Shoot toward nearest enemy (cooldown-gated) |
+| Fire | `Z` / `J` or `Space` | `⚔` | Auto-aims at nearest living enemy; falls back to ship's facing direction when none present (cooldown-gated) |
 | Bomb | `X` | `★` | One-use: destroys all enemies on screen |
 
 ### 5.3d Level 4 Controls (Isometric Voxel Farm)
@@ -900,6 +900,7 @@ Level 3 is a 90-second survival arcade shooter with a neon vector wireframe aest
 - **Lives:** 3 lives; losing all lives ends the run early
 - **Enemies:** Spawned continuously from the edges of the screen in waves; inspired by Asteroids
 - **Objective:** Survive the full 90 seconds and kill as many enemies as possible
+- **Firing:** Auto-aims at the nearest living enemy; if no enemies are alive (e.g., between waves), bullets fire in the ship's current facing direction — pressing fire is never silently ignored
 - **Bomb:** X key destroys all enemies currently on screen (one-use per life)
 
 ### Score
