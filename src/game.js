@@ -29,6 +29,7 @@ import {
 import { aabbOverlap } from './physics.js';
 import { drawHUD, drawObstacleHP } from './hud.js';
 import { sfxVictory, sfxItemPickup, resumeAudio } from './audio.js';
+import { startLevelMusic, stopMusic } from './music.js';
 import {
   initUI, showMainMenu, showWordEntry, showLoadingScreen,
   hideUI, showVictoryScreen, showLeaderboard,
@@ -164,6 +165,7 @@ export function init() {
 function goToMenu() {
   state = STATE_MENU;
   llmData = null;
+  stopMusic(0.5);
   hideAllTouchControls();
   showMainMenu(goToWordEntry, goToLeaderboard, goToAssets);
 }
@@ -201,6 +203,7 @@ function startGame(data) {
   state = STATE_PLAYING;
   hideUI();
   showTouchL1Controls();
+  startLevelMusic(1, words, data);
 
   player = createPlayer();
   obstacle = createObstacle(data.obstacle);
@@ -248,6 +251,7 @@ function restartRound() {
 function onVictory() {
   state = STATE_VICTORY;
   player.state = 'victory';
+  stopMusic(1.5);
   sfxVictory();
   hideAllTouchControls();
 
@@ -292,12 +296,13 @@ async function startLevel2Game() {
 
   state = STATE_LEVEL2_PLAYING;
   hideUI();
-
+  startLevelMusic(2, words, llmData);
   startLevel2(l2Data, level1Deaths, level1Time, words, onLevel2Victory);
 }
 
 function onLevel2Victory(totalDeaths, totalTimeMs) {
   state = STATE_LEVEL2_VICTORY;
+  stopMusic(1.5);
   cleanupLevel2();
   hideAllTouchControls();
 
@@ -324,12 +329,13 @@ async function startLevel3Game() {
 
   state = STATE_LEVEL3_PLAYING;
   hideUI();
-
+  startLevelMusic(3, words, llmData);
   startLevel3(llmData, level2Deaths, level2Time, words, onLevel3Victory);
 }
 
 function onLevel3Victory(totalDeaths, totalTimeMs, score) {
   state = STATE_LEVEL3_VICTORY;
+  stopMusic(1.5);
   cleanupLevel3();
   hideAllTouchControls();
 
@@ -386,12 +392,13 @@ async function startLevel4Game() {
 
   state = STATE_LEVEL4_PLAYING;
   hideUI();
-
+  startLevelMusic(4, words, llmData);
   startLevel4(llmData, level3Deaths, level3Time, words, onLevel4Victory);
 }
 
 function onLevel4Victory(totalDeaths, totalTimeMs, bottlesDelivered) {
   state = STATE_LEVEL4_VICTORY;
+  stopMusic(1.5);
   cleanupLevel4();
   hideAllTouchControls();
 
